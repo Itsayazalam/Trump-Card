@@ -1,0 +1,150 @@
+import { useState } from 'react'
+import { useGame } from '../contexts/GameContext'
+import { SUITS, SUIT_SYMBOLS, SUIT_COLORS } from '../utils/gameConstants'
+import Card from './Card'
+
+function TrumpSelector() {
+  const { currentPlayer, trumpSelector, players, selectTrump } = useGame()
+  const [selectedSuit, setSelectedSuit] = useState(null)
+  
+  const isSelector = currentPlayer?.id === trumpSelector
+  const selectorPlayer = trumpSelector ? players[trumpSelector] : null
+  const currentPlayerCards = currentPlayer?.id ? players[currentPlayer.id]?.cards || [] : []
+
+  const handleSuitSelect = (suit) => {
+    setSelectedSuit(suit)
+  }
+
+  const handleConfirmTrump = async () => {
+    if (selectedSuit && isSelector) {
+      await selectTrump(selectedSuit)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col">
+      {/* Header */}
+      <header className="pt-safe-top px-4 py-6 bg-white shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-800 text-center">
+          Trump Selection
+        </h1>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 px-4 py-8 flex flex-col items-center justify-center space-y-8">
+        {/* Selector Info */}
+        <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
+          <div className="text-center">
+            <div className="text-4xl mb-4">👑</div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              {isSelector ? 'Your Turn to Select Trump' : 'Waiting for Trump Selection'}
+            </h2>
+            {selectorPlayer && (
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <img
+                  src={selectorPlayer.avatar || '/default-avatar.png'}
+                  alt={selectorPlayer.name}
+                  className="w-8 h-8 rounded-full"
+                />
+                <span className="text-gray-700 font-medium">
+                  {isSelector ? 'You' : selectorPlayer.name} choosing trump
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Current Hand Preview */}
+        {currentPlayerCards.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-4xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+              Your Current Cards
+            </h3>
+            <div className="flex flex-wrap justify-center gap-2 overflow-x-auto pb-2">
+              {currentPlayerCards.map((card, index) => (
+                <Card key={`${card.suit}-${card.value}-${index}`} card={card} size="sm" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Trump Selection */}
+        {isSelector ? (
+          <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">
+              Choose Trump Suit
+            </h3>
+            
+            {/* Suit Options */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {SUITS.map((suit) => (
+                <button
+                  key={suit}
+                  onClick={() => handleSuitSelect(suit)}
+                  className={`
+                    p-6 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2
+                    ${selectedSuit === suit
+                      ? 'border-blue-500 bg-blue-50 scale-105'
+                      : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                    }
+                  `}
+                >
+                  <div className={`text-4xl ${SUIT_COLORS[suit]}`}>
+                    {SUIT_SYMBOLS[suit]}
+                  </div>
+                  <span className="capitalize font-medium text-gray-700">
+                    {suit}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Confirm Button */}
+            <button
+              onClick={handleConfirmTrump}
+              disabled={!selectedSuit}
+              className={`
+                w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200
+                ${selectedSuit
+                  ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }
+              `}
+            >
+              {selectedSuit ? `Confirm ${selectedSuit.charAt(0).toUpperCase() + selectedSuit.slice(1)} as Trump` : 'Select a suit first'}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+              <p className="text-gray-600 font-medium">
+                Waiting for {selectorPlayer?.name || 'trump selector'} to choose the trump suit...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Game Rules Reminder */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 w-full max-w-md">
+          <h4 className="font-semibold text-gray-800 mb-3 text-center">Trump Rules</h4>
+          <div className="text-sm text-gray-600 space-y-2">
+            <p>🃏 After trump selection, each player gets 8 more cards</p>
+            <p>♠️ Trump cards can beat any non-trump card</p>
+            <p>🏆 Higher trump beats lower trump</p>
+            <p>🎯 Must follow suit if possible</p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="pb-safe-bottom px-4 py-4 bg-white border-t border-gray-200">
+        <p className="text-center text-gray-500 text-sm">
+          Round 1 • 5 cards dealt • Awaiting trump selection
+        </p>
+      </footer>
+    </div>
+  )
+}
+
+export default TrumpSelector
