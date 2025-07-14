@@ -1,7 +1,8 @@
-import { useGame } from '../contexts/GameContext'
+import { usePlayers, useGame } from '../store/hooks'
 
 function GameComplete() {
-  const { players, winner } = useGame()
+  const players = usePlayers()
+  const { winner } = useGame()
   
   const playersList = Object.values(players).sort((a, b) => (b.handsWon || 0) - (a.handsWon || 0))
   const totalHands = playersList.reduce((sum, player) => sum + (player.handsWon || 0), 0)

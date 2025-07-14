@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { Provider } from 'react-redux'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
-import { GameProvider, useGame } from './contexts/GameContext'
+import { store } from './store/store'
+import { useAppDispatch, useAuth, useGame } from './store/hooks'
+import { setUser, setLoading } from './store/slices/authSlice'
+import { joinGame } from './store/slices/gameSlice'
+import { setupFirebaseListener, cleanupFirebaseListener } from './store/firebaseMiddleware'
 import { GAME_STATES } from './utils/gameConstants'
 
 import LoginScreen from './components/LoginScreen'
@@ -11,33 +16,42 @@ import GameBoard from './components/GameBoard'
 import GameComplete from './components/GameComplete'
 
 function AppContent() {
-  const { gameState, joinGame } = useGame()
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const dispatch = useAppDispatch()
+  const { isAuthenticated, loading } = useAuth()
+  const { gameState } = useGame()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user)
-      setLoading(false)
-      
+    dispatch(setLoading(true))
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Auto-join game when user is authenticated
-        const playerData = {
+        const userData = {
           id: user.uid,
           name: user.displayName,
           email: user.email,
           avatar: user.photoURL
         }
-        joinGame(playerData)
+        
+        dispatch(setUser(userData))
+        
+        // Auto-join game when user is authenticated
+        await dispatch(joinGame({ gameId: 'main-room', player: userData }))
+        
+        // Setup Firebase listener for real-time updates
+        dispatch(setupFirebaseListener('main-room'))
+      } else {
+        dispatch(setUser(null))
+        dispatch(cleanupFirebaseListener())
       }
+      
+      dispatch(setLoading(false))
     })
 
-    return () => unsubscribe()
-  }, [joinGame])
-
-  const handleLogin = async (playerData) => {
-    await joinGame(playerData)
-  }
+    return () => {
+      unsubscribe()
+      dispatch(cleanupFirebaseListener())
+    }
+  }, [dispatch])
 
   if (loading) {
     return (
@@ -50,8 +64,8 @@ function AppContent() {
     )
   }
 
-  if (!user) {
-    return <LoginScreen onLogin={handleLogin} />
+  if (!isAuthenticated) {
+    return <LoginScreen />
   }
 
   // Render appropriate component based on game state
@@ -71,9 +85,9 @@ function AppContent() {
 
 function App() {
   return (
-    <GameProvider>
+    <Provider store={store}>
       <AppContent />
-    </GameProvider>
+    </Provider>
   )
 }
 

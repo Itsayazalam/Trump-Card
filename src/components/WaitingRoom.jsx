@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useGame } from '../contexts/GameContext'
+import { useAppDispatch, useCurrentPlayer, usePlayers, useGame } from '../store/hooks'
+import { updatePlayerReady, startGame } from '../store/slices/gameSlice'
 
 function WaitingRoom() {
-  const { players, currentPlayer, updatePlayerReady, startGame } = useGame()
+  const dispatch = useAppDispatch()
+  const currentPlayer = useCurrentPlayer()
+  const players = usePlayers()
+  const { gameId } = useGame()
   const [isReady, setIsReady] = useState(false)
   
   const playersList = Object.values(players)
@@ -13,12 +17,16 @@ function WaitingRoom() {
   const handleReadyToggle = async () => {
     const newReadyState = !isReady
     setIsReady(newReadyState)
-    await updatePlayerReady(newReadyState)
+    dispatch(updatePlayerReady({ 
+      gameId, 
+      playerId: currentPlayer.id, 
+      ready: newReadyState 
+    }))
   }
 
   const handleStartGame = async () => {
     if (canStart) {
-      await startGame()
+      dispatch(startGame({ gameId, players }))
     }
   }
 

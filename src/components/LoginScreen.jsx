@@ -1,33 +1,13 @@
-import { useState } from 'react'
-import { signInWithPopup } from 'firebase/auth'
-import { auth, googleProvider } from '../firebase'
+import { useAppDispatch, useAuth } from '../store/hooks'
+import { loginWithGoogle, clearError } from '../store/slices/authSlice'
 
-function LoginScreen({ onLogin }) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+function LoginScreen() {
+  const dispatch = useAppDispatch()
+  const { loading, error } = useAuth()
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    setError('')
-    
-    try {
-      const result = await signInWithPopup(auth, googleProvider)
-      const user = result.user
-      
-      const playerData = {
-        id: user.uid,
-        name: user.displayName,
-        email: user.email,
-        avatar: user.photoURL
-      }
-      
-      onLogin(playerData)
-    } catch (error) {
-      console.error('Login error:', error)
-      setError('Failed to login. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
+    dispatch(clearError())
+    dispatch(loginWithGoogle())
   }
 
   return (
@@ -59,10 +39,10 @@ function LoginScreen({ onLogin }) {
 
           <button
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={loading}
             className="w-full bg-white border-2 border-gray-300 hover:border-gray-400 active:border-gray-500 rounded-xl py-4 px-6 flex items-center justify-center space-x-3 transition-all duration-200 disabled:opacity-50"
           >
-            {isLoading ? (
+            {loading ? (
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
             ) : (
               <>

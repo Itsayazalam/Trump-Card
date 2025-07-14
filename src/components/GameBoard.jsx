@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react'
-import { useGame } from '../contexts/GameContext'
+import { useEffect } from 'react'
+import { useAppDispatch, useCurrentPlayer, usePlayers, useGame, useSelectedCard, useIsMyTurn } from '../store/hooks'
+import { playCard } from '../store/slices/gameSlice'
+import { setSelectedCard } from '../store/slices/uiSlice'
 import { SUIT_SYMBOLS, SUIT_COLORS } from '../utils/gameConstants'
 import { canPlayCard } from '../utils/gameUtils'
 import Card from './Card'
 
 function GameBoard() {
+  const dispatch = useAppDispatch()
+  const currentPlayer = useCurrentPlayer()
+  const players = usePlayers()
   const {
-    players,
-    currentPlayer,
     currentHand,
     currentTurn,
     leadSuit,
     trumpSuit,
     handNumber,
-    playCard
+    gameId
   } = useGame()
-
-  const [selectedCard, setSelectedCard] = useState(null)
+  const selectedCard = useSelectedCard()
+  const isMyTurn = useIsMyTurn()
   
   const playersList = Object.values(players)
   const currentPlayerCards = currentPlayer?.id ? players[currentPlayer.id]?.cards || [] : []
-  const isMyTurn = currentPlayer?.id && Object.keys(players).indexOf(currentPlayer.id) === currentTurn
   const currentTurnPlayer = playersList[currentTurn]
 
   useEffect(() => {
-    setSelectedCard(null)
-  }, [currentTurn])
+    dispatch(setSelectedCard(null))
+  }, [currentTurn, dispatch])
 
   const handleCardSelect = (card) => {
     if (!isMyTurn) return
@@ -34,16 +36,24 @@ function GameBoard() {
     if (!canPlay) return
     
     if (selectedCard?.suit === card.suit && selectedCard?.value === card.value) {
-      setSelectedCard(null)
+      dispatch(setSelectedCard(null))
     } else {
-      setSelectedCard(card)
+      dispatch(setSelectedCard(card))
     }
   }
 
   const handlePlayCard = async () => {
     if (selectedCard && isMyTurn) {
-      await playCard(selectedCard)
-      setSelectedCard(null)
+      dispatch(playCard({
+        gameId,
+        card: selectedCard,
+        playerId: currentPlayer.id,
+        players,
+        currentHand,
+        currentTurn,
+        leadSuit
+      }))
+      dispatch(setSelectedCard(null))
     }
   }
 

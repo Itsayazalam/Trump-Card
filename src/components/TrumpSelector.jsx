@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { useGame } from '../contexts/GameContext'
+import { useAppDispatch, useCurrentPlayer, usePlayers, useGame } from '../store/hooks'
+import { selectTrump } from '../store/slices/gameSlice'
 import { SUITS, SUIT_SYMBOLS, SUIT_COLORS } from '../utils/gameConstants'
 import Card from './Card'
 
 function TrumpSelector() {
-  const { currentPlayer, trumpSelector, players, selectTrump } = useGame()
+  const dispatch = useAppDispatch()
+  const currentPlayer = useCurrentPlayer()
+  const players = usePlayers()
+  const { trumpSelector, gameId, deck } = useGame()
   const [selectedSuit, setSelectedSuit] = useState(null)
   
   const isSelector = currentPlayer?.id === trumpSelector
@@ -17,7 +21,12 @@ function TrumpSelector() {
 
   const handleConfirmTrump = async () => {
     if (selectedSuit && isSelector) {
-      await selectTrump(selectedSuit)
+      dispatch(selectTrump({ 
+        gameId, 
+        suit: selectedSuit, 
+        players, 
+        deck 
+      }))
     }
   }
 
