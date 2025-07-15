@@ -26,7 +26,8 @@ export const useIsMyTurn = () => {
   const { players, currentTurn } = useAppSelector((state) => state.game);
 
   if (!user?.id || !players) return false;
-  const playerIds = Object.keys(players);
+  // Use consistent sorted order to match completeHand logic
+  const playerIds = Object.keys(players).sort();
   const currentPlayerIndex = playerIds.indexOf(user.id);
   return currentPlayerIndex === currentTurn;
 };

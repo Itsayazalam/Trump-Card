@@ -38,7 +38,7 @@ function Card({
         ${sizeClasses[size]} 
         bg-white rounded-lg border-2 shadow-md flex flex-col items-center justify-between p-1 transition-all duration-200
         ${isPlayable && onClick ? 'cursor-pointer hover:shadow-lg active:scale-95' : 'cursor-default'}
-        ${isSelected ? 'border-blue-500 bg-blue-50 transform -translate-y-2' : 'border-gray-300'}
+        ${isSelected ? 'border-blue-500 bg-blue-50 transform -translate-y-2 -scale-105' : 'border-gray-300'}
         ${!isPlayable ? 'opacity-50' : ''}
       `}
     >
@@ -50,12 +50,11 @@ function Card({
         </div>
       </div>
 
-      {/* Center symbol */}
+      {/* Center symbol
       <div className={`${SUIT_COLORS[card.suit]} text-2xl`}>
         {SUIT_SYMBOLS[card.suit]}
-      </div>
+      </div> */}
 
-      {/* Bottom corner (rotated) */}
       <div className={`self-end transform rotate-180 ${SUIT_COLORS[card.suit]} font-bold leading-none`}>
         <div className="text-center">
           <div>{card.value}</div>

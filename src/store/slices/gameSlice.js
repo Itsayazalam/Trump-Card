@@ -9,6 +9,28 @@ import {
   determineGameWinner,
 } from "../../utils/gameUtils";
 
+// Debug utility to track player changes
+const logPlayerChanges = (before, after, action) => {
+  const beforePlayerIds = Object.keys(before || {}).sort();
+  const afterPlayerIds = Object.keys(after || {}).sort();
+  
+  if (beforePlayerIds.length !== afterPlayerIds.length) {
+    console.warn(`🚨 PLAYER COUNT CHANGED in ${action}:`);
+    console.warn(`  Before: ${beforePlayerIds.length} players [${beforePlayerIds.join(', ')}]`);
+    console.warn(`  After: ${afterPlayerIds.length} players [${afterPlayerIds.join(', ')}]`);
+    
+    const lost = beforePlayerIds.filter(id => !afterPlayerIds.includes(id));
+    const added = afterPlayerIds.filter(id => !beforePlayerIds.includes(id));
+    
+    if (lost.length > 0) {
+      console.error(`  ❌ LOST PLAYERS: ${lost.join(', ')}`);
+    }
+    if (added.length > 0) {
+      console.log(`  ✅ ADDED PLAYERS: ${added.join(', ')}`);
+    }
+  }
+};
+
 // Async thunks for Firebase operations
 export const joinGame = createAsyncThunk(
   "game/joinGame",
@@ -93,7 +115,8 @@ export const startGame = createAsyncThunk(
       const shuffledDeck = shuffleDeck(deck);
 
       // Deal 5 cards to each player initially
-      const playerIds = Object.keys(players);
+      // Use consistent sorted order to match turn logic
+      const playerIds = Object.keys(players).sort();
       const updatedPlayers = {};
 
       playerIds.forEach((playerId, index) => {
@@ -141,7 +164,8 @@ export const selectTrump = createAsyncThunk(
   async ({ gameId, suit, players, deck }, { rejectWithValue }) => {
     try {
       // Deal remaining 8 cards to each player
-      const playerIds = Object.keys(players);
+      // Use consistent sorted order to match turn logic
+      const playerIds = Object.keys(players).sort();
       const updatedPlayers = {};
 
       playerIds.forEach((playerId, index) => {
@@ -250,7 +274,30 @@ export const completeHand = createAsyncThunk(
   ) => {
     try {
       const winner = determineHandWinner(hand, leadSuit, trumpSuit);
-      const winnerIndex = Object.keys(players).indexOf(winner.playerId);
+      console.log("🏆 completeHand: Hand winner determined:", {
+        winnerId: winner.playerId,
+        winnerCard: `${winner.value} of ${winner.suit}`,
+      });
+      
+      // CRITICAL FIX: Use a consistent ordering method for player indexing
+      // Instead of relying on Object.keys() order, let's use a stable sort
+      const playerIds = Object.keys(players).sort(); // Alphabetical sort for consistency
+      const winnerIndex = playerIds.indexOf(winner.playerId);
+      
+      console.log("🔢 completeHand: Player indexing:", {
+        allPlayerIds: playerIds,
+        winnerPlayerId: winner.playerId,
+        calculatedWinnerIndex: winnerIndex,
+        currentPlayersObject: Object.keys(players),
+      });
+
+      if (winnerIndex === -1) {
+        console.error("❌ completeHand: Winner not found in players!", {
+          winnerId: winner.playerId,
+          availablePlayerIds: playerIds,
+        });
+        throw new Error(`Winner ${winner.playerId} not found in players`);
+      }
 
       // Update scores
       const updatedPlayers = {
@@ -275,6 +322,13 @@ export const completeHand = createAsyncThunk(
         handNumber: newHandNumber,
         winner: isGameComplete ? determineGameWinner(updatedPlayers) : null,
       };
+
+      console.log("💾 completeHand: Firebase update data:", {
+        playersCount: Object.keys(gameUpdate.players).length,
+        newCurrentTurn: gameUpdate.currentTurn,
+        newHandNumber: gameUpdate.handNumber,
+        isGameComplete,
+      });
 
       await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
       return gameUpdate;
@@ -342,11 +396,18 @@ const gameSlice = createSlice({
         console.log("🔄 Firebase data sync received:");
         console.log("  Game State:", data.gameState);
         console.log("  Hand Number:", data.handNumber);
+        console.log("  Current Turn:", data.currentTurn);
+        
+        // Track player changes
+        logPlayerChanges(state.players, data.players, 'setFirebaseData');
+        
         console.log("  Players with card counts:");
         if (data.players) {
+          const playerCount = Object.keys(data.players).length;
+          console.log(`  Total players: ${playerCount}`);
           Object.entries(data.players).forEach(([id, player]) => {
             console.log(
-              `    ${player.name} (${id}): ${player.cards?.length || 0} cards`
+              `    ${player.name} (${id}): ${player.cards?.length || 0} cards, ${player.handsWon || 0} tricks`
             );
             if (player.cards?.length > 0) {
               console.log(
@@ -356,6 +417,10 @@ const gameSlice = createSlice({
               );
             }
           });
+          
+          if (playerCount !== 4) {
+            console.warn(`⚠️ Expected 4 players, got ${playerCount}!`);
+          }
         } else {
           console.log("    No players data received!");
         }
