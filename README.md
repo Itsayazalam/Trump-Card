@@ -33,10 +33,13 @@ Judgement is a trick-taking card game where 4 players compete to win the most ha
 - 🎮 Touch-optimized card interactions
 - 💨 Fast development with Vite
 - 🔄 Hot module replacement (HMR)
+- 🔴 Redux Toolkit for state management
+- 🔥 Firebase middleware for real-time sync
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18 + Vite
+- **State Management**: Redux Toolkit + React-Redux
 - **Styling**: Tailwind CSS
 - **Backend**: Firebase (Authentication + Realtime Database)
 - **Deployment**: Ready for Vercel/Netlify
@@ -184,14 +187,31 @@ src/
 │   ├── MobileButton.jsx # Reusable button component
 │   ├── TrumpSelector.jsx# Trump suit selection
 │   └── WaitingRoom.jsx  # Player lobby
-├── contexts/            # React contexts
-│   └── GameContext.jsx  # Game state management
+├── store/              # Redux state management
+│   ├── store.js        # Main store configuration
+│   ├── hooks.js        # Typed Redux hooks
+│   ├── firebaseMiddleware.js # Firebase real-time sync
+│   └── slices/         # Redux slices
+│       ├── authSlice.js    # Authentication state
+│       ├── gameSlice.js    # Game state and logic
+│       └── uiSlice.js      # UI state management
 ├── utils/              # Utility functions
 │   ├── gameConstants.js # Game constants
 │   └── gameUtils.js    # Game logic utilities
 ├── firebase.js         # Firebase configuration
 └── App.jsx            # Main app component
 ```
+
+## 🔴 Redux State Management
+
+The application uses **Redux Toolkit** for predictable state management:
+
+- **Auth Slice**: User authentication and profile data
+- **Game Slice**: Game state, players, cards, and game logic
+- **UI Slice**: Loading states, modals, and user interface state
+- **Firebase Middleware**: Real-time synchronization with Firebase
+
+For detailed Redux setup and usage, see [REDUX_SETUP.md](REDUX_SETUP.md).
 
 ## 🎨 Customization
 

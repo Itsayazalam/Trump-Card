@@ -32,8 +32,8 @@ export const SUIT_SYMBOLS = {
 };
 
 export const SUIT_COLORS = {
-  hearts: "text-red-500",
-  diamonds: "text-red-500",
-  clubs: "text-black",
-  spades: "text-black",
+  hearts: "text-red-600",
+  diamonds: "text-red-600",
+  clubs: "text-gray-900",
+  spades: "text-gray-900",
 };

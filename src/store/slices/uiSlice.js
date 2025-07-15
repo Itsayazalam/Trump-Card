@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice } from "@reduxjs/toolkit";
 
 // Initial state
 const initialState = {
@@ -6,65 +6,65 @@ const initialState = {
   showChat: false,
   notifications: [],
   isFullscreen: false,
-  theme: 'light',
+  theme: "light",
   soundEnabled: true,
   animationsEnabled: true,
   showTutorial: false,
-  connectionStatus: 'connected' // 'connected', 'connecting', 'disconnected'
-}
+  connectionStatus: "connected", // 'connected', 'connecting', 'disconnected'
+};
 
 // UI slice
 const uiSlice = createSlice({
-  name: 'ui',
+  name: "ui",
   initialState,
   reducers: {
     setSelectedCard: (state, action) => {
-      state.selectedCard = action.payload
+      state.selectedCard = action.payload;
     },
     toggleChat: (state) => {
-      state.showChat = !state.showChat
+      state.showChat = !state.showChat;
     },
     setShowChat: (state, action) => {
-      state.showChat = action.payload
+      state.showChat = action.payload;
     },
     addNotification: (state, action) => {
       state.notifications.push({
         id: Date.now(),
         timestamp: Date.now(),
-        ...action.payload
-      })
+        ...action.payload,
+      });
     },
     removeNotification: (state, action) => {
       state.notifications = state.notifications.filter(
-        notification => notification.id !== action.payload
-      )
+        (notification) => notification.id !== action.payload
+      );
     },
     clearNotifications: (state) => {
-      state.notifications = []
+      state.notifications = [];
     },
     toggleFullscreen: (state) => {
-      state.isFullscreen = !state.isFullscreen
+      state.isFullscreen = !state.isFullscreen;
     },
     setTheme: (state, action) => {
-      state.theme = action.payload
+      state.theme = action.payload;
     },
     toggleSound: (state) => {
-      state.soundEnabled = !state.soundEnabled
+      state.soundEnabled = !state.soundEnabled;
     },
     toggleAnimations: (state) => {
-      state.animationsEnabled = !state.animationsEnabled
+      state.animationsEnabled = !state.animationsEnabled;
     },
     setShowTutorial: (state, action) => {
-      state.showTutorial = action.payload
+      state.showTutorial = action.payload;
     },
     setConnectionStatus: (state, action) => {
-      state.connectionStatus = action.payload
+      state.connectionStatus = action.payload;
     },
     resetUI: () => {
-      return initialState
-    }
-  }
-})
+      return initialState;
+    },
+  },
+});
 
 export const {
   setSelectedCard,
@@ -79,7 +79,7 @@ export const {
   toggleAnimations,
   setShowTutorial,
   setConnectionStatus,
-  resetUI
-} = uiSlice.actions
+  resetUI,
+} = uiSlice.actions;
 
-export default uiSlice.reducer
+export default uiSlice.reducer;

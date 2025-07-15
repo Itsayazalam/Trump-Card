@@ -98,7 +98,12 @@ function TrumpSelector() {
                     }
                   `}
                 >
-                  <div className={`text-4xl ${SUIT_COLORS[suit]}`}>
+                  <div 
+                    className={`text-4xl ${SUIT_COLORS[suit]}`}
+                    style={{
+                      color: suit === 'hearts' || suit === 'diamonds' ? '#dc2626' : '#1f2937'
+                    }}
+                  >
                     {SUIT_SYMBOLS[suit]}
                   </div>
                   <span className="capitalize font-medium text-gray-700">
@@ -113,7 +118,7 @@ function TrumpSelector() {
               onClick={handleConfirmTrump}
               disabled={!selectedSuit}
               className={`
-                w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200
+                w-full py-4 px-6 !text-black rounded-xl font-semibold text-lg transition-all duration-200
                 ${selectedSuit
                   ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -132,18 +137,7 @@ function TrumpSelector() {
               </p>
             </div>
           </div>
-        )}
-
-        {/* Game Rules Reminder */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 w-full max-w-md">
-          <h4 className="font-semibold text-gray-800 mb-3 text-center">Trump Rules</h4>
-          <div className="text-sm text-gray-600 space-y-2">
-            <p>🃏 After trump selection, each player gets 8 more cards</p>
-            <p>♠️ Trump cards can beat any non-trump card</p>
-            <p>🏆 Higher trump beats lower trump</p>
-            <p>🎯 Must follow suit if possible</p>
-          </div>
-        </div>
+        )}    
       </main>
 
       {/* Footer */}

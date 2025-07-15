@@ -1,79 +1,115 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { realtimeDb } from '../../firebase'
-import { ref, set, update } from 'firebase/database'
-import { GAME_STATES } from '../../utils/gameConstants'
-import { 
-  generateDeck, 
-  shuffleDeck, 
-  determineHandWinner, 
-  determineGameWinner 
-} from '../../utils/gameUtils'
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { realtimeDb } from "../../firebase";
+import { ref, set, update, get } from "firebase/database";
+import { GAME_STATES } from "../../utils/gameConstants";
+import {
+  generateDeck,
+  shuffleDeck,
+  determineHandWinner,
+  determineGameWinner,
+} from "../../utils/gameUtils";
 
 // Async thunks for Firebase operations
 export const joinGame = createAsyncThunk(
-  'game/joinGame',
+  "game/joinGame",
   async ({ gameId, player }, { rejectWithValue }) => {
     try {
-      const playerRef = ref(realtimeDb, `games/${gameId}/players/${player.id}`)
-      await set(playerRef, {
-        id: player.id,
-        name: player.name,
-        email: player.email,
-        avatar: player.avatar,
-        cards: [],
-        handsWon: 0,
-        isReady: false,
-        joinedAt: Date.now()
-      })
-      return { gameId, player }
+      console.log("🎮 Joining game:", { gameId, playerId: player.id });
+
+      const playerRef = ref(realtimeDb, `games/${gameId}/players/${player.id}`);
+
+      // First, check if player already exists to preserve their game data
+      const existingPlayerSnapshot = await get(playerRef);
+      const existingPlayer = existingPlayerSnapshot.val();
+
+      let playerData;
+      if (existingPlayer) {
+        console.log("🔄 Player already exists, preserving game data:", {
+          existingCards: existingPlayer.cards?.length || 0,
+          existingHandsWon: existingPlayer.handsWon || 0,
+        });
+
+        // Preserve existing game data but update auth info
+        playerData = {
+          ...existingPlayer,
+          id: player.id,
+          name: player.name,
+          email: player.email,
+          avatar: player.avatar,
+          lastJoinedAt: Date.now(), // Update last joined time
+        };
+      } else {
+        console.log("🆕 New player joining");
+
+        // New player - create fresh data
+        playerData = {
+          id: player.id,
+          name: player.name,
+          email: player.email,
+          avatar: player.avatar,
+          cards: [],
+          handsWon: 0,
+          isReady: false,
+          joinedAt: Date.now(),
+        };
+      }
+
+      console.log("💾 Saving player data:", playerData);
+      await set(playerRef, playerData);
+
+      return { gameId, player };
     } catch (error) {
-      return rejectWithValue(error.message)
+      console.error("❌ Join game error:", error);
+      return rejectWithValue(error.message);
     }
   }
-)
+);
 
 export const updatePlayerReady = createAsyncThunk(
-  'game/updatePlayerReady',
+  "game/updatePlayerReady",
   async ({ gameId, playerId, ready }, { rejectWithValue }) => {
     try {
-      const playerRef = ref(realtimeDb, `games/${gameId}/players/${playerId}/isReady`)
-      await set(playerRef, ready)
-      return { playerId, ready }
+      const playerRef = ref(
+        realtimeDb,
+        `games/${gameId}/players/${playerId}/isReady`
+      );
+      await set(playerRef, ready);
+      return { playerId, ready };
     } catch (error) {
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message);
     }
   }
-)
+);
 
 export const startGame = createAsyncThunk(
-  'game/startGame',
+  "game/startGame",
   async ({ gameId, players }, { rejectWithValue }) => {
     try {
       if (Object.keys(players).length !== 4) {
-        throw new Error('Need exactly 4 players to start')
+        throw new Error("Need exactly 4 players to start");
       }
 
-      const deck = generateDeck()
-      const shuffledDeck = shuffleDeck(deck)
-      
+      const deck = generateDeck();
+      const shuffledDeck = shuffleDeck(deck);
+
       // Deal 5 cards to each player initially
-      const playerIds = Object.keys(players)
-      const updatedPlayers = {}
-      
+      const playerIds = Object.keys(players);
+      const updatedPlayers = {};
+
       playerIds.forEach((playerId, index) => {
-        const playerCards = shuffledDeck.slice(index * 5, (index + 1) * 5)
+        const playerCards = shuffledDeck.slice(index * 5, (index + 1) * 5);
         updatedPlayers[playerId] = {
           ...players[playerId],
           cards: playerCards,
-          handsWon: 0
-        }
-      })
+          handsWon: 0,
+        };
+      });
 
       // Store remaining deck for later dealing
-      const remainingDeck = shuffledDeck.slice(20)
-      
+      const remainingDeck = shuffledDeck.slice(20);
+
       // Choose trump selector (first player)
-      const trumpSelector = playerIds[0]
+      const trumpSelector = playerIds[0];
 
       const gameUpdate = {
         players: updatedPlayers,
@@ -82,32 +118,39 @@ export const startGame = createAsyncThunk(
         deck: remainingDeck,
         currentTurn: 0,
         handNumber: 0,
-        scores: playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {})
-      }
+        scores: playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
+      };
 
-      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate)
-      return gameUpdate
+      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
+      console.log("🎮 startGame: Firebase update successful", {
+        playersCount: Object.keys(gameUpdate.players).length,
+        cardCounts: Object.values(gameUpdate.players).map((p) => ({
+          name: p.name,
+          cards: p.cards?.length || 0,
+        })),
+      });
+      return gameUpdate;
     } catch (error) {
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message);
     }
   }
-)
+);
 
 export const selectTrump = createAsyncThunk(
-  'game/selectTrump',
+  "game/selectTrump",
   async ({ gameId, suit, players, deck }, { rejectWithValue }) => {
     try {
       // Deal remaining 8 cards to each player
-      const playerIds = Object.keys(players)
-      const updatedPlayers = {}
-      
+      const playerIds = Object.keys(players);
+      const updatedPlayers = {};
+
       playerIds.forEach((playerId, index) => {
-        const additionalCards = deck.slice(index * 8, (index + 1) * 8)
+        const additionalCards = deck.slice(index * 8, (index + 1) * 8);
         updatedPlayers[playerId] = {
           ...players[playerId],
-          cards: [...(players[playerId].cards || []), ...additionalCards]
-        }
-      })
+          cards: [...(players[playerId].cards || []), ...additionalCards],
+        };
+      });
 
       const gameUpdate = {
         players: updatedPlayers,
@@ -115,103 +158,163 @@ export const selectTrump = createAsyncThunk(
         trumpSuit: suit,
         currentTurn: 0,
         currentHand: [],
-        leadSuit: null
-      }
+        leadSuit: null,
+      };
 
-      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate)
-      return gameUpdate
+      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
+      console.log("🃏 selectTrump: Firebase update successful", {
+        playersCount: Object.keys(gameUpdate.players).length,
+        cardCounts: Object.values(gameUpdate.players).map((p) => ({
+          name: p.name,
+          cards: p.cards?.length || 0,
+        })),
+      });
+      return gameUpdate;
     } catch (error) {
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message);
     }
   }
-)
+);
 
 export const playCard = createAsyncThunk(
-  'game/playCard',
-  async ({ gameId, card, playerId, players, currentHand, currentTurn, leadSuit }, { rejectWithValue, dispatch }) => {
+  "game/playCard",
+  async (
+    { gameId, card, playerId, players, currentHand, currentTurn, leadSuit },
+    { rejectWithValue, dispatch, getState }
+  ) => {
     try {
       // Remove card from player's hand
       const updatedPlayer = {
         ...players[playerId],
-        cards: players[playerId].cards.filter(c => 
-          !(c.suit === card.suit && c.value === card.value)
-        )
-      }
+        cards: players[playerId].cards.filter(
+          (c) => !(c.suit === card.suit && c.value === card.value)
+        ),
+      };
 
       const updatedPlayers = {
         ...players,
-        [playerId]: updatedPlayer
-      }
+        [playerId]: updatedPlayer,
+      };
 
-      const newHand = [...currentHand, { ...card, playerId }]
-      const newLeadSuit = currentHand.length === 0 ? card.suit : leadSuit
-      const nextTurn = (currentTurn + 1) % 4
+      const newHand = [...currentHand, { ...card, playerId }];
+      const newLeadSuit = currentHand.length === 0 ? card.suit : leadSuit;
+      const nextTurn = (currentTurn + 1) % 4;
 
       const gameUpdate = {
         players: updatedPlayers,
         currentHand: newHand,
         leadSuit: newLeadSuit,
-        currentTurn: nextTurn
-      }
+        currentTurn: nextTurn,
+      };
 
-      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate)
+      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
+      console.log("🎯 playCard: Firebase update successful", {
+        playerId,
+        cardPlayed: `${card.value} of ${card.suit}`,
+        playerCardsRemaining: updatedPlayer.cards.length,
+        handSize: newHand.length,
+      });
 
       // Check if hand is complete
       if (newHand.length === 4) {
+        const state = getState();
+        const trumpSuit = state.game.trumpSuit;
+        const handNumber = state.game.handNumber;
+
         setTimeout(() => {
-          dispatch(completeHand({ gameId, hand: newHand, leadSuit: newLeadSuit, players: updatedPlayers }))
-        }, 2000)
+          dispatch(
+            completeHand({
+              gameId,
+              hand: newHand,
+              leadSuit: newLeadSuit,
+              trumpSuit,
+              players: updatedPlayers,
+              handNumber,
+            })
+          );
+        }, 2000);
       }
 
-      return gameUpdate
+      return gameUpdate;
     } catch (error) {
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message);
     }
   }
-)
+);
 
 export const completeHand = createAsyncThunk(
-  'game/completeHand',
-  async ({ gameId, hand, leadSuit, trumpSuit, players, handNumber }, { rejectWithValue }) => {
+  "game/completeHand",
+  async (
+    { gameId, hand, leadSuit, trumpSuit, players, handNumber },
+    { rejectWithValue }
+  ) => {
     try {
-      const winner = determineHandWinner(hand, leadSuit, trumpSuit)
-      const winnerIndex = Object.keys(players).indexOf(winner.playerId)
-      
+      const winner = determineHandWinner(hand, leadSuit, trumpSuit);
+      const winnerIndex = Object.keys(players).indexOf(winner.playerId);
+
       // Update scores
       const updatedPlayers = {
         ...players,
         [winner.playerId]: {
           ...players[winner.playerId],
-          handsWon: (players[winner.playerId].handsWon || 0) + 1
-        }
-      }
+          handsWon: (players[winner.playerId].handsWon || 0) + 1,
+        },
+      };
 
-      const newHandNumber = handNumber + 1
-      const isGameComplete = newHandNumber >= 13
+      const newHandNumber = handNumber + 1;
+      const isGameComplete = newHandNumber >= 13;
 
       const gameUpdate = {
         players: updatedPlayers,
-        gameState: isGameComplete ? GAME_STATES.GAME_COMPLETE : GAME_STATES.PLAYING,
+        gameState: isGameComplete
+          ? GAME_STATES.GAME_COMPLETE
+          : GAME_STATES.PLAYING,
         currentHand: [],
         leadSuit: null,
         currentTurn: winnerIndex,
         handNumber: newHandNumber,
-        winner: isGameComplete ? determineGameWinner(updatedPlayers) : null
-      }
+        winner: isGameComplete ? determineGameWinner(updatedPlayers) : null,
+      };
 
-      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate)
-      return gameUpdate
+      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
+      return gameUpdate;
     } catch (error) {
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message);
     }
   }
-)
+);
+
+export const endGame = createAsyncThunk(
+  "game/endGame",
+  async ({ gameId }, { rejectWithValue }) => {
+    try {
+      // Reset the game to waiting state
+      const gameUpdate = {
+        gameState: GAME_STATES.WAITING,
+        players: {},
+        currentHand: [],
+        currentTurn: 0,
+        leadSuit: null,
+        trumpSuit: null,
+        trumpSelector: null,
+        handNumber: 0,
+        scores: {},
+        winner: null,
+        deck: [],
+      };
+
+      await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
+      return gameUpdate;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 // Initial state
 const initialState = {
-  gameId: 'main-room',
+  gameId: "main-room",
   players: {},
-  currentPlayer: null,
   gameState: GAME_STATES.WAITING,
   trumpSuit: null,
   trumpSelector: null,
@@ -225,138 +328,170 @@ const initialState = {
   isConnected: false,
   loading: false,
   error: null,
-  firebaseListener: null
-}
+  firebaseListener: null,
+};
 
 // Game slice
 const gameSlice = createSlice({
-  name: 'game',
+  name: "game",
   initialState,
   reducers: {
     setFirebaseData: (state, action) => {
-      const data = action.payload
+      const data = action.payload;
       if (data) {
-        state.players = data.players || {}
-        state.gameState = data.gameState || GAME_STATES.WAITING
-        state.trumpSuit = data.trumpSuit || null
-        state.trumpSelector = data.trumpSelector || null
-        state.currentHand = data.currentHand || []
-        state.currentTurn = data.currentTurn || 0
-        state.leadSuit = data.leadSuit || null
-        state.handNumber = data.handNumber || 0
-        state.scores = data.scores || {}
-        state.winner = data.winner || null
-        state.deck = data.deck || []
-        state.isConnected = true
-        state.error = null
+        console.log("🔄 Firebase data sync received:");
+        console.log("  Game State:", data.gameState);
+        console.log("  Hand Number:", data.handNumber);
+        console.log("  Players with card counts:");
+        if (data.players) {
+          Object.entries(data.players).forEach(([id, player]) => {
+            console.log(
+              `    ${player.name} (${id}): ${player.cards?.length || 0} cards`
+            );
+            if (player.cards?.length > 0) {
+              console.log(
+                `      Cards: ${player.cards
+                  .map((c) => `${c.value}${c.suit.charAt(0)}`)
+                  .join(", ")}`
+              );
+            }
+          });
+        } else {
+          console.log("    No players data received!");
+        }
+        console.log("  Current Hand:", data.currentHand);
+        console.log("  Trump Suit:", data.trumpSuit);
+        console.log("========================");
+
+        state.players = data.players || {};
+        state.gameState = data.gameState || GAME_STATES.WAITING;
+        state.trumpSuit = data.trumpSuit || null;
+        state.trumpSelector = data.trumpSelector || null;
+        state.currentHand = data.currentHand || [];
+        state.currentTurn = data.currentTurn || 0;
+        state.leadSuit = data.leadSuit || null;
+        state.handNumber = data.handNumber || 0;
+        state.scores = data.scores || {};
+        state.winner = data.winner || null;
+        state.deck = data.deck || [];
+        state.isConnected = true;
+        state.error = null;
+      } else {
+        console.log("⚠️ Firebase data sync received null/undefined data");
       }
-    },
-    setCurrentPlayer: (state, action) => {
-      state.currentPlayer = action.payload
     },
     setConnectionStatus: (state, action) => {
-      state.isConnected = action.payload
+      state.isConnected = action.payload;
     },
     setFirebaseListener: (state, action) => {
-      state.firebaseListener = action.payload
+      state.firebaseListener = action.payload;
     },
     resetGame: (state) => {
-      return { 
-        ...initialState, 
-        gameId: state.gameId, 
-        currentPlayer: state.currentPlayer 
-      }
+      return {
+        ...initialState,
+        gameId: state.gameId,
+      };
     },
     clearError: (state) => {
-      state.error = null
-    }
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
       // Join game
       .addCase(joinGame.pending, (state) => {
-        state.loading = true
-        state.error = null
+        state.loading = true;
+        state.error = null;
       })
       .addCase(joinGame.fulfilled, (state, action) => {
-        state.loading = false
-        state.currentPlayer = action.payload.player
-        state.gameId = action.payload.gameId
+        state.loading = false;
+        state.gameId = action.payload.gameId;
       })
       .addCase(joinGame.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-      
+
       // Update player ready
       .addCase(updatePlayerReady.pending, (state) => {
-        state.loading = true
+        state.loading = true;
       })
       .addCase(updatePlayerReady.fulfilled, (state) => {
-        state.loading = false
+        state.loading = false;
       })
       .addCase(updatePlayerReady.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-      
+
       // Start game
       .addCase(startGame.pending, (state) => {
-        state.loading = true
+        state.loading = true;
       })
       .addCase(startGame.fulfilled, (state) => {
-        state.loading = false
+        state.loading = false;
       })
       .addCase(startGame.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-      
+
       // Select trump
       .addCase(selectTrump.pending, (state) => {
-        state.loading = true
+        state.loading = true;
       })
       .addCase(selectTrump.fulfilled, (state) => {
-        state.loading = false
+        state.loading = false;
       })
       .addCase(selectTrump.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-      
+
       // Play card
       .addCase(playCard.pending, (state) => {
-        state.loading = true
+        state.loading = true;
       })
       .addCase(playCard.fulfilled, (state) => {
-        state.loading = false
+        state.loading = false;
       })
       .addCase(playCard.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-      
+
       // Complete hand
       .addCase(completeHand.pending, (state) => {
-        state.loading = true
+        state.loading = true;
       })
       .addCase(completeHand.fulfilled, (state) => {
-        state.loading = false
+        state.loading = false;
       })
       .addCase(completeHand.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
+        state.loading = false;
+        state.error = action.payload;
       })
-  }
-})
+
+      // End game
+      .addCase(endGame.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(endGame.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(endGame.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  },
+});
 
 export const {
   setFirebaseData,
-  setCurrentPlayer,
   setConnectionStatus,
   setFirebaseListener,
   resetGame,
-  clearError
-} = gameSlice.actions
+  clearError,
+} = gameSlice.actions;
 
-export default gameSlice.reducer
+export default gameSlice.reducer;

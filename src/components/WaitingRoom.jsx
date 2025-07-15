@@ -9,10 +9,22 @@ function WaitingRoom() {
   const { gameId } = useGame()
   const [isReady, setIsReady] = useState(false)
   
+  // Detailed console logging
+  console.log('=== WAITING ROOM DEBUG ===')
+  console.log('Current Player:', currentPlayer)
+  console.log('Players Object:', players)
+  console.log('Game ID:', gameId)
+  
   const playersList = Object.values(players)
   const playersCount = playersList.length
   const allReady = playersList.every(p => p.isReady)
   const canStart = playersCount === 4 && allReady
+
+  console.log('Players List:', playersList)
+  console.log('Players Count:', playersCount)
+  console.log('All Ready:', allReady)
+  console.log('Can Start:', canStart)
+  console.log('========================')
 
   const handleReadyToggle = async () => {
     const newReadyState = !isReady
@@ -137,7 +149,7 @@ function WaitingRoom() {
           {/* Ready Toggle Button */}
           <button
             onClick={handleReadyToggle}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
+            className={`w-full !text-black py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
               isReady
                 ? 'bg-green-500 hover:bg-green-600 text-white'
                 : 'bg-yellow-500 hover:bg-yellow-600 text-white'
@@ -150,7 +162,7 @@ function WaitingRoom() {
           {canStart && (
             <button
               onClick={handleStartGame}
-              className="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 animate-pulse"
+              className="w-full !text-green-500 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 font-semibold py-4 px-6 rounded-xl transition-all duration-200 animate-pulse"
             >
               🚀 Start Game
             </button>

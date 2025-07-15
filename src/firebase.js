@@ -8,14 +8,17 @@ import { getDatabase } from "firebase/database";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v9-compat and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "your-app-id",
-  measurementId: "your-measurement-id",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+console.log("Firebase config:", firebaseConfig);
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -30,7 +33,16 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 
 // Initialize Realtime Database and get a reference to the service
-export const realtimeDb = getDatabase(app);
+let realtimeDb = null;
+try {
+  realtimeDb = getDatabase(app);
+  console.log("Realtime Database initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize Realtime Database:", error);
+  console.log("Will use Firestore instead");
+}
+
+export { realtimeDb };
 
 // Initialize Cloud Storage and get a reference to the service
 export const storage = getStorage(app);

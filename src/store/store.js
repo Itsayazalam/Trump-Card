@@ -1,8 +1,8 @@
-import { configureStore } from '@reduxjs/toolkit'
-import gameReducer from './slices/gameSlice'
-import authReducer from './slices/authSlice'
-import uiReducer from './slices/uiSlice'
-import { firebaseMiddleware } from './firebaseMiddleware'
+import { configureStore } from "@reduxjs/toolkit";
+import gameReducer from "./slices/gameSlice";
+import authReducer from "./slices/authSlice";
+import uiReducer from "./slices/uiSlice";
+import { firebaseMiddleware } from "./firebaseMiddleware";
 
 export const store = configureStore({
   reducer: {
@@ -15,18 +15,18 @@ export const store = configureStore({
       serializableCheck: {
         // Ignore these action types for Firebase functions
         ignoredActions: [
-          'persist/PERSIST', 
-          'persist/REHYDRATE',
-          'game/setupFirebaseListener',
-          'game/setFirebaseListener'
+          "persist/PERSIST",
+          "persist/REHYDRATE",
+          "game/setupFirebaseListener",
+          "game/setFirebaseListener",
         ],
         // Ignore these field paths in all actions
-        ignoredActionsPaths: ['meta.arg', 'payload.timestamp'],
+        ignoredActionsPaths: ["meta.arg", "payload.timestamp"],
         // Ignore these paths in the state
-        ignoredPaths: ['game.firebaseListener'],
+        ignoredPaths: ["game.firebaseListener"],
       },
     }).concat(firebaseMiddleware),
-})
+});
 
 // Export types for use in components (when using TypeScript)
 // export type RootState = ReturnType<typeof store.getState>
