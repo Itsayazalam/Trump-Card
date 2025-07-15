@@ -78,3 +78,36 @@ export function canPlayCard(card, playerCards, leadSuit) {
   // If player doesn't have lead suit, they can play any card
   return true;
 }
+
+export function sortCards(cards) {
+  if (!cards || cards.length === 0) return [];
+
+  // Define suit order: Spades, Hearts, Diamonds, Clubs
+  const suitOrder = { spades: 0, hearts: 1, diamonds: 2, clubs: 3 };
+
+  // Define value order: 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A
+  const valueOrder = {
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
+    7: 7,
+    8: 8,
+    9: 9,
+    10: 10,
+    J: 11,
+    Q: 12,
+    K: 13,
+    A: 14,
+  };
+
+  return [...cards].sort((a, b) => {
+    // First sort by suit
+    const suitComparison = suitOrder[a.suit] - suitOrder[b.suit];
+    if (suitComparison !== 0) return suitComparison;
+
+    // Then sort by value within the same suit
+    return valueOrder[a.value] - valueOrder[b.value];
+  });
+}

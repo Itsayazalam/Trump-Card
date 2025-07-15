@@ -1,24 +1,24 @@
-import { useAppDispatch, useAuth } from '../store/hooks'
-import { loginWithGoogle, clearError } from '../store/slices/authSlice'
+import { useAppDispatch, useAuth } from "../store/hooks";
+import { loginWithGoogle, clearError } from "../store/slices/authSlice";
 
 function LoginScreen() {
-  const dispatch = useAppDispatch()
-  const { loading, error } = useAuth()
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAuth();
 
   const handleGoogleLogin = async () => {
-    dispatch(clearError())
-    dispatch(loginWithGoogle())
-  }
+    dispatch(clearError());
+    dispatch(loginWithGoogle());
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+    <div className="min-h-screen min-w-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md min-w-[280px]">
         {/* Game Logo/Title */}
         <div className="flex flex-col items-center mb-8">
           <div className="text-6xl mb-4">🎴</div>
-          <h1 
+          <h1
             className="text-3xl font-bold text-red-800 mb-2"
-            style={{ color: '#991b1b' }}
+            style={{ color: "#991b1b" }}
           >
             Judgement
           </h1>
@@ -46,16 +46,18 @@ function LoginScreen() {
             onClick={handleGoogleLogin}
             disabled={loading}
             className="w-full border-2 rounded-xl py-4 px-6 flex items-center justify-center transition-all duration-200 disabled:opacity-50 min-h-[60px]"
-            style={{ 
-              backgroundColor: '#7f1d1d',
-              borderColor: '#7f1d1d',
-              color: '#ffffff'
+            style={{
+              backgroundColor: "#7f1d1d",
+              borderColor: "#7f1d1d",
+              color: "#ffffff",
             }}
           >
             {loading ? (
               <div className="flex items-center justify-center w-full">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                <span className="font-medium" style={{ color: '#ffffff' }}>Signing in...</span>
+                <span className="font-medium" style={{ color: "#ffffff" }}>
+                  Signing in...
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-center w-full space-x-3">
@@ -77,7 +79,9 @@ function LoginScreen() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span className="text-white font-medium">Login with Google</span>
+                <span className="text-white font-medium">
+                  Login with Google
+                </span>
               </div>
             )}
           </button>
@@ -94,7 +98,7 @@ function LoginScreen() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default LoginScreen
+export default LoginScreen;

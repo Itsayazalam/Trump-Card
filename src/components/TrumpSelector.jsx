@@ -1,62 +1,66 @@
-import { useState } from 'react'
-import { useAppDispatch, useCurrentPlayer, usePlayers, useGame } from '../store/hooks'
-import { selectTrump } from '../store/slices/gameSlice'
-import { SUITS, SUIT_SYMBOLS, SUIT_COLORS } from '../utils/gameConstants'
-import Card from './Card'
+import { useState } from "react";
+import {
+  useAppDispatch,
+  useCurrentPlayer,
+  usePlayers,
+  useGame,
+} from "../store/hooks";
+import { selectTrump } from "../store/slices/gameSlice";
+import { SUITS, SUIT_SYMBOLS, SUIT_COLORS } from "../utils/gameConstants";
+import Card from "./Card";
 
 function TrumpSelector() {
-  const dispatch = useAppDispatch()
-  const currentPlayer = useCurrentPlayer()
-  const players = usePlayers()
-  const { trumpSelector, gameId, deck } = useGame()
-  const [selectedSuit, setSelectedSuit] = useState(null)
-  
-  const isSelector = currentPlayer?.id === trumpSelector
-  const selectorPlayer = trumpSelector ? players[trumpSelector] : null
-  const currentPlayerCards = currentPlayer?.id ? players[currentPlayer.id]?.cards || [] : []
+  const dispatch = useAppDispatch();
+  const currentPlayer = useCurrentPlayer();
+  const players = usePlayers();
+  const { trumpSelector, gameId, deck } = useGame();
+  const [selectedSuit, setSelectedSuit] = useState(null);
+
+  const isSelector = currentPlayer?.id === trumpSelector;
+  const selectorPlayer = trumpSelector ? players[trumpSelector] : null;
+  const currentPlayerCards = currentPlayer?.id
+    ? players[currentPlayer.id]?.cards || []
+    : [];
 
   const handleSuitSelect = (suit) => {
-    setSelectedSuit(suit)
-  }
+    setSelectedSuit(suit);
+  };
 
   const handleConfirmTrump = async () => {
     if (selectedSuit && isSelector) {
-      dispatch(selectTrump({ 
-        gameId, 
-        suit: selectedSuit, 
-        players, 
-        deck 
-      }))
+      dispatch(
+        selectTrump({
+          gameId,
+          suit: selectedSuit,
+          players,
+          deck,
+        })
+      );
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col">
-      {/* Header */}
-      <header className="pt-safe-top px-4 py-6 bg-white shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-800 text-center">
-          Trump Selection
-        </h1>
-      </header>
-
+    <div className="min-h-screen min-w-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col">
       {/* Main Content */}
       <main className="flex-1 px-4 py-8 flex flex-col items-center justify-center space-y-8">
         {/* Selector Info */}
         <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
           <div className="text-center">
             <div className="text-4xl mb-4">👑</div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              {isSelector ? 'Your Turn to Select Trump' : 'Waiting for Trump Selection'}
+            <h2 className="text-xl font-bold text-gray-800 mb-2 ">
+              {isSelector
+                ? "Your Turn to Select Trump"
+                : "Waiting for Trump Selection"}
             </h2>
             {selectorPlayer && (
-              <div className="flex items-center justify-center space-x-3 mb-4">
+              <div className="flex items-center justify-center space-x-3 mb-4 animate-pulse">
                 <img
-                  src={selectorPlayer.avatar || '/default-avatar.png'}
+                  src={selectorPlayer.avatar || "/default-avatar.png"}
                   alt={selectorPlayer.name}
                   className="w-8 h-8 rounded-full"
                 />
                 <span className="text-gray-700 font-medium">
-                  {isSelector ? 'You' : selectorPlayer.name} choosing trump
+                  {isSelector ? "You" : selectorPlayer.name} choosing trump
                 </span>
               </div>
             )}
@@ -67,11 +71,15 @@ function TrumpSelector() {
         {currentPlayerCards.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-4xl">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-              Your Current Cards
+              Your first 5 Five Cards
             </h3>
             <div className="flex flex-wrap justify-center gap-2 overflow-x-auto pb-2">
               {currentPlayerCards.map((card, index) => (
-                <Card key={`${card.suit}-${card.value}-${index}`} card={card} size="sm" />
+                <Card
+                  key={`${card.suit}-${card.value}-${index}`}
+                  card={card}
+                  size="sm"
+                />
               ))}
             </div>
           </div>
@@ -79,11 +87,11 @@ function TrumpSelector() {
 
         {/* Trump Selection */}
         {isSelector ? (
-          <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-xl px-6 py-4 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">
               Choose Trump Suit
             </h3>
-            
+
             {/* Suit Options */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               {SUITS.map((suit) => (
@@ -92,16 +100,20 @@ function TrumpSelector() {
                   onClick={() => handleSuitSelect(suit)}
                   className={`
                     p-6 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2
-                    ${selectedSuit === suit
-                      ? 'border-blue-500 bg-blue-50 scale-105'
-                      : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                    ${
+                      selectedSuit === suit
+                        ? "border-blue-500 bg-blue-50 scale-105"
+                        : "border-gray-300 bg-gray-50 hover:border-gray-400"
                     }
                   `}
                 >
-                  <div 
+                  <div
                     className={`text-4xl ${SUIT_COLORS[suit]}`}
                     style={{
-                      color: suit === 'hearts' || suit === 'diamonds' ? '#dc2626' : '#1f2937'
+                      color:
+                        suit === "hearts" || suit === "diamonds"
+                          ? "#dc2626"
+                          : "#1f2937",
                     }}
                   >
                     {SUIT_SYMBOLS[suit]}
@@ -119,35 +131,33 @@ function TrumpSelector() {
               disabled={!selectedSuit}
               className={`
                 w-full py-4 px-6 !text-black rounded-xl font-semibold text-lg transition-all duration-200
-                ${selectedSuit
-                  ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ${
+                  selectedSuit
+                    ? "bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }
               `}
             >
-              {selectedSuit ? `Confirm ${selectedSuit.charAt(0).toUpperCase() + selectedSuit.slice(1)} as Trump` : 'Select a suit first'}
+              {selectedSuit
+                ? `Confirm ${
+                    selectedSuit.charAt(0).toUpperCase() + selectedSuit.slice(1)
+                  } as Trump`
+                : "Select a suit first"}
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md">
+          <div className="">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-              <p className="text-gray-600 font-medium">
-                Waiting for {selectorPlayer?.name || 'trump selector'} to choose the trump suit...
+              <p className="text-white font-medium text-sm">
+                Waiting for {selectorPlayer?.name || "trump selector"} to choose
+                the trump to start the game
               </p>
             </div>
           </div>
-        )}    
+        )}
       </main>
-
-      {/* Footer */}
-      <footer className="pb-safe-bottom px-4 py-4 bg-white border-t border-gray-200">
-        <p className="text-center text-gray-500 text-sm">
-          Round 1 • 5 cards dealt • Awaiting trump selection
-        </p>
-      </footer>
     </div>
-  )
+  );
 }
 
-export default TrumpSelector
+export default TrumpSelector;

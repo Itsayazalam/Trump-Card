@@ -11,7 +11,7 @@ import {
 import { playCard, endGame } from "../store/slices/gameSlice";
 import { setSelectedCard } from "../store/slices/uiSlice";
 import { SUIT_SYMBOLS, SUIT_COLORS } from "../utils/gameConstants";
-import { canPlayCard } from "../utils/gameUtils";
+import { canPlayCard, sortCards } from "../utils/gameUtils";
 import Card from "./Card";
 
 function GameBoard() {
@@ -30,9 +30,10 @@ function GameBoard() {
   // Use consistent sorted ordering to match the turn logic in completeHand
   const playerIds = Object.keys(players).sort(); // Alphabetical sort for consistency
   const playersList = playerIds.map((id) => players[id]).filter(Boolean); // Convert IDs to player objects
-  const currentPlayerCards = currentPlayer?.id
+  const rawPlayerCards = currentPlayer?.id
     ? players[currentPlayer.id]?.cards || []
     : [];
+  const currentPlayerCards = sortCards(rawPlayerCards); // Sort cards by suit and value
   const currentTurnPlayer = playersList[currentTurn];
 
   // ===== DEBUG LOGGING =====
@@ -54,7 +55,7 @@ function GameBoard() {
   console.log("Players scores:");
   Object.values(players).forEach((p) => {
     console.log(
-      `  ${p.name}: ${p.handsWon || 0} tricks won, ${
+      `  ${p.name}: ${p.handsWon || 0} hands won, ${
         p.cards?.length || 0
       } cards remaining (ID: ${p.id})`
     );
@@ -155,42 +156,73 @@ function GameBoard() {
   };
 
   const getCardPosition = (playerId) => {
-    const playerIndex = getPlayerTableIndex(playerId);
+    // Find the current player's index and the card player's index
+    const currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
+    const cardPlayerIndex = getPlayerTableIndex(playerId);
+
+    // Calculate relative position from current player's perspective
+    // Current player is always at bottom (position 0)
+    // Other players are positioned relative to current player
+    let relativePosition;
+    if (cardPlayerIndex === currentPlayerIndex) {
+      relativePosition = 0; // Bottom (current player)
+    } else {
+      // Calculate relative position (1, 2, 3 for left, top, right)
+      relativePosition = (cardPlayerIndex - currentPlayerIndex + 4) % 4;
+    }
+
     const cardPositions = [
-      { bottom: "10px", left: "50%", transform: "translateX(-50%)" }, // Bottom (player 0)
-      { left: "10px", top: "50%", transform: "translateY(-50%)" }, // Left (player 1)
-      { top: "10px", left: "50%", transform: "translateX(-50%)" }, // Top (player 2)
-      { right: "10px", top: "50%", transform: "translateY(-50%)" }, // Right (player 3)
+      { bottom: "10px", left: "50%", transform: "translateX(-50%)" }, // Bottom (current player)
+      { left: "10px", top: "50%", transform: "translateY(-50%)" }, // Left
+      { top: "10px", left: "50%", transform: "translateX(-50%)" }, // Top (opposite player)
+      { right: "10px", top: "50%", transform: "translateY(-50%)" }, // Right
     ];
-    return cardPositions[playerIndex] || cardPositions[0];
+
+    console.log(
+      `🎯 Card position for ${players[playerId]?.name}: player index ${cardPlayerIndex}, current player index ${currentPlayerIndex}, relative position ${relativePosition}`
+    );
+
+    return cardPositions[relativePosition] || cardPositions[0];
   };
 
   // ===== SUB-COMPONENTS =====
 
   // Component: Player Info Area (displays other players around the table)
-  const PlayerInfoArea = ({ player, index, filteredIndex }) => {
-    // For 4 players, we want positions: [current, left, top, right]
-    // When we filter out current player, we have 3 players that should go to: [left, top, right]
-    const visiblePositions = ["left", "top", "right"];
-    const position = visiblePositions[filteredIndex];
+  const PlayerInfoArea = ({ player, index }) => {
+    // Calculate relative position from current player's perspective
+    const currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
+    const playerIndex = getPlayerTableIndex(player.id);
+
+    // Calculate relative position (1, 2, 3 for left, top, right)
+    const relativePosition = (playerIndex - currentPlayerIndex + 4) % 4;
+
+    // Map relative positions to actual screen positions
+    const positionMap = {
+      1: "left", // Player to the left
+      2: "top", // Player opposite (top)
+      3: "right", // Player to the right
+    };
+
+    const position = positionMap[relativePosition];
     const isPlayerTurn = index === currentTurn;
 
     // Debug logging
     console.log(
-      `🎯 PlayerInfoArea - Player: ${player.name}, Original Index: ${index}, Filtered Index: ${filteredIndex}, Position: ${position}`
+      `🎯 PlayerInfoArea - Player: ${player.name}, Index: ${playerIndex}, Current: ${currentPlayerIndex}, Relative: ${relativePosition}, Position: ${position}`
     );
 
     const positionClasses = {
-      top: "absolute top-20 left-1/2 transform -translate-x-1/2",
-      left: "absolute left-6 top-1/2 transform -translate-y-1/2",
-      right: "absolute right-6 top-1/2 transform -translate-y-1/2",
+      top: "absolute top-20 left-1/2 transform -translate-x-1/2 -translate-y-2/2",
+      left: "absolute left-6 top-1/2 transform -translate-y-1/2 rotate-90 -translate-x-1/2",
+      right:
+        "absolute right-6 top-1/2 transform -translate-y-1/2 -rotate-90 translate-x-1/2",
     };
 
     return (
       <div key={player.id} className={positionClasses[position]}>
         <div
           className={`
-          bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 min-w-[100px] transition-all duration-300
+          bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-2 min-w-[100px] transition-all duration-300
           ${
             isPlayerTurn
               ? "ring-2 ring-yellow-400 ring-opacity-75 bg-yellow-50/90"
@@ -198,47 +230,19 @@ function GameBoard() {
           }
         `}
         >
-          <div className="flex items-center space-x-2 mb-2">
+          <div className={`flex items-center space-x-2 mb-2`}>
             <img
               src={player.avatar || "/default-avatar.png"}
               alt={player.name}
               className="w-6 h-6 rounded-full border"
             />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 text-center">
               <p className="font-medium text-xs truncate text-gray-800">
-                {player.name}
+                {player.name.split(" ")[0]}
               </p>
               <p className="text-xs text-gray-500">
-                {player.handsWon || 0} tricks won
+                {player.handsWon || 0} hands
               </p>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-1">
-              <span className="text-sm text-gray-700 font-medium">
-                {player.cards?.length || 0}
-              </span>
-              <div className="flex">
-                {/* Show mini card representations */}
-                {Array.from({
-                  length: Math.min(player.cards?.length || 0, 5),
-                }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-2 h-3 bg-blue-600 border border-blue-700 rounded-sm -ml-0.5 first:ml-0"
-                    style={{ zIndex: 5 - i }}
-                  />
-                ))}
-                {(player.cards?.length || 0) > 5 && (
-                  <span className="text-xs text-gray-500 ml-1">
-                    +{(player.cards?.length || 0) - 5}
-                  </span>
-                )}
-              </div>
-              {isPlayerTurn && (
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-              )}
             </div>
           </div>
         </div>
@@ -248,27 +252,25 @@ function GameBoard() {
 
   // Component: Game Header (hand counter, trump display, turn indicator)
   const GameHeader = () => (
-    <header className="pt-safe-top px-4 py-3 bg-green-900/90 backdrop-blur-sm text-white relative z-10">
+    <header className="pt-safe-top px-4 py-2 bg-green-900/90 backdrop-blur-sm text-white relative z-10">
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg font-bold">Hand {handNumber + 1}/13</span>
-          <button
-            onClick={handleEndGame}
-            className="ml-4 !bg-red-600 hover:!bg-red-700 active:bg-red-800 text-white text-xs font-medium px-3 py-0 rounded-lg transition-all duration-200"
-          >
-            End Game
-          </button>
+        <span className="text-lg font-bold">Hand {handNumber + 1}/13</span>
+        <div
+          onClick={handleEndGame}
+          className="ml-4 !bg-red-600 hover:!bg-red-700 active:bg-red-800 text-white text-xs font-medium px-3 py-1 rounded-lg transition-all duration-200"
+        >
+          End Game
         </div>
       </div>
       <div className="flex items-center justify-between mt-2">
-        <div className="text-sm">
+        <div className="text-sm animate-pulse">
           {isMyTurn
             ? "🎯 Your turn"
-            : `${currentTurnPlayer?.name || "Player"}'s turn`}
+            : `${currentTurnPlayer?.name.split(" ")[0] || "Player"}'s turn`}
         </div>
 
         {trumpSuit && (
-          <div className="flex items-center space-x-2 bg-yellow-400/90 text-black px-3 py-1 rounded-full">
+          <div className="flex items-center space-x-2 text-white px-3 rounded-full">
             <span className="text-sm font-bold">Trump:</span>
             <span className={`text-lg font-bold ${SUIT_COLORS[trumpSuit]}`}>
               {SUIT_SYMBOLS[trumpSuit]}
@@ -292,17 +294,26 @@ function GameBoard() {
                   className="absolute flex flex-col items-center"
                   style={getCardPosition(handCard.playerId)}
                 >
-                  <Card card={handCard} size="md" />
-                  <p className="text-xs text-yellow-200 mt-1 bg-black/50 px-2 py-1 rounded font-medium">
-                    {players[handCard.playerId]?.name || "Player"}
-                  </p>
+                  {(index === 0 || index === 1 || index == 2) && (
+                    <p className="text-xs text-yellow-200 mt-1 bg-black/50 px-2 py-1 rounded font-medium">
+                      {players[handCard.playerId]?.name?.split(" ")[0] ||
+                        "Player"}
+                    </p>
+                  )}
+                  <Card card={handCard} size="sm" />
+                  {index === 3 && (
+                    <p className="text-xs text-yellow-200 mt-1 bg-black/50 px-2 py-1 rounded font-medium">
+                      {players[handCard.playerId]?.name?.split(" ")[0] ||
+                        "Player"}
+                    </p>
+                  )}
                 </div>
               ))}
 
               {currentHand.length === 4 && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="bg-yellow-400 text-black px-4 py-2 rounded-xl font-bold text-sm shadow-lg">
-                    🏆 Evaluating trick...
+                    🏆 Evaluating who won...
                   </div>
                 </div>
               )}
@@ -310,7 +321,6 @@ function GameBoard() {
           ) : (
             <div className="text-center text-yellow-200">
               <div className="text-6xl mb-4">🎴</div>
-              <p className="text-xl font-bold mb-2">Card Table</p>
               <p className="text-sm opacity-80">Waiting for first card...</p>
               {leadSuit && (
                 <p className="text-sm mt-2 bg-black/30 px-3 py-1 rounded">
@@ -331,7 +341,7 @@ function GameBoard() {
   const PlayerHandArea = () => {
     // If player has no cards but game is still ongoing, show a message
     if (currentPlayerCards.length === 0) {
-      if (handNumber < 13) {
+      if (handNumber != 12) {
         return (
           <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-red-900 to-red-800 border-t-4 border-red-600 pb-safe-bottom">
             <div className="px-4 py-6 text-center text-white">
@@ -352,12 +362,17 @@ function GameBoard() {
             </div>
           </div>
         );
+      } else {
+        return (
+          <div className="py-4 text-center fixed bottom-0 left-0 right-0 bg-gradient-to-t from-yellow-500 to-yellow-600  pb-safe-bottom">
+            No Cards Left
+          </div>
+        );
       }
-      return null; // Game complete, no cards expected
     }
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900 to-gray-800 border-t-4 border-yellow-600 pb-safe-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900 to-gray-800 border-t-2 border-yellow-600 pb-safe-bottom">
         {/* Player Info Bar */}
         <div className="flex items-center justify-between px-4 py-1.5 bg-gray-800 text-white">
           <div className="flex items-center space-x-2">
@@ -367,9 +382,9 @@ function GameBoard() {
               className="w-6 h-6 rounded-full border-2 border-yellow-400"
             />
             <div>
-              <p className="font-bold text-xs">You ({currentPlayer?.name})</p>
+              <p className="font-bold text-xs">You</p>
               <p className="text-xs text-gray-300">
-                {currentPlayer?.handsWon || 0} tricks won
+                {currentPlayer?.handsWon || 0} hands won
               </p>
             </div>
           </div>
@@ -378,30 +393,30 @@ function GameBoard() {
               {currentPlayerCards.length} cards
             </p>
             {isMyTurn && (
-              <p className="text-xs text-yellow-400">🎯 Your turn</p>
+              <p className="text-xs text-yellow-400 animate-pulse">
+                🎯 Your turn
+              </p>
             )}
           </div>
         </div>
 
         {/* Selected Card Action */}
         {selectedCard && (
-          <div className="px-4 py-3 bg-yellow-600 text-center">
-            <button
-              onClick={handlePlayCard}
-              className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3 px-8 rounded-xl transition-all duration-200 shadow-lg text-lg"
-            >
-              Play {selectedCard.value} of {selectedCard.suit}{" "}
-              <span className={SUIT_COLORS[selectedCard.suit]}>
-                {SUIT_SYMBOLS[selectedCard.suit]}
-              </span>
-            </button>
+          <div
+            onClick={handlePlayCard}
+            className="mb-4 text-center bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-2 px-8 rounded-xl transition-all duration-200 shadow-lg text-sm"
+          >
+            Play {selectedCard.value} of {selectedCard.suit}{" "}
+            <span className={SUIT_COLORS[selectedCard.suit]}>
+              {SUIT_SYMBOLS[selectedCard.suit]}
+            </span>
           </div>
         )}
 
         {/* Hand Cards */}
-        <div className="px-2 py-4">
-          <div className="flex items-center justify-center">
-            <div className="relative flex items-center">
+        <div className="px-0 py-3">
+          <div className="flex items-center justify-center w-screen">
+            <div className="relative flex items-center justify-center">
               {currentPlayerCards.map((card, index) => {
                 const isPlayable = canPlayCard(
                   card,
@@ -412,8 +427,13 @@ function GameBoard() {
                   selectedCard?.suit === card.suit &&
                   selectedCard?.value === card.value;
 
-                // Calculate overlap offset using CSS custom properties that we'll set
-                const offsetX = index * 12; // Base 12px overlap
+                // Calculate positioning to center the entire hand
+                const cardOverlap = 22; // Overlap between cards
+                const cardWidth = 48; // Width of sm card (w-12 = 48px)
+                const totalHandWidth =
+                  (currentPlayerCards.length - 1) * cardOverlap + cardWidth;
+                const centerOffset = -totalHandWidth / 2; // Offset to center the hand
+                const offsetX = centerOffset + index * cardOverlap;
                 const selectedOffset = isSelected ? -10 : 0;
 
                 return (
@@ -437,13 +457,10 @@ function GameBoard() {
                 );
               })}
 
-              {/* Add spacer to prevent overflow */}
+              {/* Container to maintain proper height */}
               <div
                 style={{
-                  width: `${Math.max(
-                    0,
-                    (currentPlayerCards.length - 1) * 12 + 48
-                  )}px`,
+                  width: "1px", // Minimal width since positioning is absolute
                   height: "64px",
                 }}
                 className="relative"
@@ -451,7 +468,7 @@ function GameBoard() {
             </div>
           </div>
 
-          {/* Card info display */}
+          {/* Card info display
           {currentPlayerCards.length > 0 && (
             <div className="mt-3 text-center">
               <div className="text-xs text-gray-400 mb-1">
@@ -500,7 +517,7 @@ function GameBoard() {
                 })}
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Turn Info */}
@@ -512,14 +529,6 @@ function GameBoard() {
           ) : (
             <p className="text-gray-300 text-xs">
               Waiting for {currentTurnPlayer?.name || "player"} to play...
-            </p>
-          )}
-          {leadSuit && currentHand.length > 0 && (
-            <p className="text-gray-400 text-xs mt-1">
-              Follow {leadSuit} {SUIT_SYMBOLS[leadSuit]} if possible • Trump:{" "}
-              <span className={SUIT_COLORS[trumpSuit]}>
-                {SUIT_SYMBOLS[trumpSuit]}
-              </span>
             </p>
           )}
         </div>
@@ -565,7 +574,7 @@ function GameBoard() {
   // ===== MAIN RENDER =====
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-600 relative overflow-hidden">
+    <div className="min-h-screen min-w-screen bg-gradient-to-br from-green-800 to-green-600 relative overflow-hidden">
       <GameHeader />
 
       {/* Game Area - Full Screen Table */}
@@ -575,7 +584,7 @@ function GameBoard() {
         {/* Player Info Areas - Around the table */}
         {playersList
           .filter((player) => player.id !== currentPlayer?.id)
-          .map((player, filteredIndex) => {
+          .map((player) => {
             // Calculate the original index for position mapping
             const originalIndex = playersList.findIndex(
               (p) => p.id === player.id
@@ -585,7 +594,6 @@ function GameBoard() {
                 key={player.id}
                 player={player}
                 index={originalIndex}
-                filteredIndex={filteredIndex}
               />
             );
           })}
