@@ -23,6 +23,8 @@ function AppContent() {
   const dispatch = useAppDispatch();
   const { isAuthenticated, loading, user } = useAuth();
   const { gameState, players, isConnected } = useGame();
+  console.log("Auth Domain:", JSON.stringify(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN));
+
 
   // Console logging for debugging
   console.log("=== APP STATE DEBUG ===");

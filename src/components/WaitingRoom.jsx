@@ -6,6 +6,8 @@ import {
   useGame,
 } from "../store/hooks";
 import { updatePlayerReady, startGame } from "../store/slices/gameSlice";
+import { realtimeDb } from "../firebase";
+import { ref, remove } from "firebase/database";
 
 function WaitingRoom() {
   const dispatch = useAppDispatch();
@@ -14,22 +16,10 @@ function WaitingRoom() {
   const { gameId } = useGame();
   const [isReady, setIsReady] = useState(false);
 
-  // Detailed console logging
-  console.log("=== WAITING ROOM DEBUG ===");
-  console.log("Current Player:", currentPlayer);
-  console.log("Players Object:", players);
-  console.log("Game ID:", gameId);
-
   const playersList = Object.values(players);
   const playersCount = playersList.length;
   const allReady = playersList.every((p) => p.isReady);
   const canStart = playersCount === 4 && allReady;
-
-  console.log("Players List:", playersList);
-  console.log("Players Count:", playersCount);
-  console.log("All Ready:", allReady);
-  console.log("Can Start:", canStart);
-  console.log("========================");
 
   const handleReadyToggle = async () => {
     const newReadyState = !isReady;
@@ -46,6 +36,25 @@ function WaitingRoom() {
   const handleStartGame = async () => {
     if (canStart) {
       dispatch(startGame({ gameId, players }));
+    }
+  };
+
+  const handleNewGame = async () => {
+    try {
+      console.log("🗑️ Clearing Firebase database for new game...");
+
+      // Clear the entire game data from Firebase
+      const gameRef = ref(realtimeDb, `games/${gameId || "main-room"}`);
+      await remove(gameRef);
+
+      console.log("✅ Firebase database cleared successfully");
+
+      // Refresh the page to start fresh
+      window.location.reload();
+    } catch (error) {
+      console.error("❌ Error clearing Firebase database:", error);
+      // If Firebase clearing fails, still refresh to start over
+      window.location.reload();
     }
   };
 
@@ -180,6 +189,13 @@ function WaitingRoom() {
               </p>
             </div>
           )}
+
+          <div
+            onClick={handleNewGame}
+            className="w-full text-center text-sm text-white bg-red-400 hover:bg-red-600 active:bg-red-700 font-semibold py-2 px-2 rounded-xl transition-all duration-200"
+          >
+            🔄 Reset
+          </div>
         </div>
       </main>
     </div>
