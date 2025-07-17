@@ -4,11 +4,39 @@ import { ref, remove } from "firebase/database";
 
 function GameComplete() {
   const players = usePlayers();
-  const { gameId } = useGame();
+  const { gameId, teams } = useGame();
 
   const playersList = Object.values(players).sort(
     (a, b) => (b.handsWon || 0) - (a.handsWon || 0)
   );
+
+  // Calculate team scores if teams exist
+  const getTeamScores = () => {
+    if (!teams || !teams.team1 || !teams.team2) return null;
+
+    const team1Score = teams.team1.players.reduce((total, playerId) => {
+      return total + (players[playerId]?.handsWon || 0);
+    }, 0);
+
+    const team2Score = teams.team2.players.reduce((total, playerId) => {
+      return total + (players[playerId]?.handsWon || 0);
+    }, 0);
+
+    return {
+      team1: {
+        name: teams.team1.name,
+        score: team1Score,
+        players: teams.team1.players.map((id) => players[id]).filter(Boolean),
+      },
+      team2: {
+        name: teams.team2.name,
+        score: team2Score,
+        players: teams.team2.players.map((id) => players[id]).filter(Boolean),
+      },
+    };
+  };
+
+  const teamScores = getTeamScores();
 
   const handleNewGame = async () => {
     try {
@@ -85,6 +113,68 @@ function GameComplete() {
             ))}
           </div>
         </div>
+
+        {/* Team Scores (if teams were used) */}
+        {teamScores && (
+          <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
+              Team Results
+            </h3>
+
+            <div className="space-y-4">
+              <div
+                className={`rounded-2xl p-4 shadow-lg ${
+                  teamScores.team1.score > teamScores.team2.score
+                    ? "bg-gradient-to-r from-green-400 to-green-600 text-white"
+                    : "bg-gradient-to-r from-blue-400 to-blue-600 text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-lg">{teamScores.team1.name}</h4>
+                  <span className="text-2xl font-bold">
+                    {teamScores.team1.score}
+                  </span>
+                </div>
+                <div className="text-sm opacity-90">
+                  {teamScores.team1.players
+                    .map((p) => p.name.split(" ")[0])
+                    .join(" & ")}
+                </div>
+              </div>
+
+              <div
+                className={`rounded-2xl p-4 shadow-lg ${
+                  teamScores.team2.score > teamScores.team1.score
+                    ? "bg-gradient-to-r from-green-400 to-green-600 text-white"
+                    : "bg-gradient-to-r from-red-400 to-red-600 text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-lg">{teamScores.team2.name}</h4>
+                  <span className="text-2xl font-bold">
+                    {teamScores.team2.score}
+                  </span>
+                </div>
+                <div className="text-sm opacity-90">
+                  {teamScores.team2.players
+                    .map((p) => p.name.split(" ")[0])
+                    .join(" & ")}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-lg font-bold text-gray-800">
+                {teamScores.team1.score > teamScores.team2.score
+                  ? `🏆 ${teamScores.team1.name} Wins!`
+                  : teamScores.team2.score > teamScores.team1.score
+                  ? `🏆 ${teamScores.team2.name} Wins!`
+                  : "🤝 Teams Tied!"}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="w-full max-w-md space-y-4">
           <div

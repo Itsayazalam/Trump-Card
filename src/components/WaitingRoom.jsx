@@ -15,6 +15,13 @@ function WaitingRoom() {
   const { gameId } = useGame();
   const [isReady, setIsReady] = useState(false);
   const [selectedTrumpChooser, setSelectedTrumpChooser] = useState(null);
+  const [playerArrangement, setPlayerArrangement] = useState([
+    null,
+    null,
+    null,
+    null,
+  ]); // [bottom, left, top, right]
+  const [showTeamArrangement, setShowTeamArrangement] = useState(false);
 
   // Detailed console logging
   console.log("=== WAITING ROOM DEBUG ===");
@@ -31,6 +38,8 @@ function WaitingRoom() {
   console.log("Players Count:", playersCount);
   console.log("All Ready:", allReady);
   console.log("Can Start:", canStart);
+  console.log("Player Arrangement:", playerArrangement);
+  console.log("Show Team Arrangement:", showTeamArrangement);
   console.log("========================");
 
   const handleReadyToggle = async () => {
@@ -47,11 +56,19 @@ function WaitingRoom() {
 
   const handleStartGame = async () => {
     if (canStart) {
+      const teams = getTeams();
+      console.log("🚀 Starting game with:", {
+        playerArrangement: showTeamArrangement ? playerArrangement : null,
+        teams: teams,
+        manualTrumpSelector: selectedTrumpChooser,
+      });
       dispatch(
         startGame({
           gameId,
           players,
           manualTrumpSelector: selectedTrumpChooser,
+          playerArrangement: showTeamArrangement ? playerArrangement : null,
+          teams: teams,
         })
       );
     }
@@ -59,6 +76,91 @@ function WaitingRoom() {
 
   const handleLogout = () => {
     dispatch(logout());
+  };
+
+  // Helper function to get teams based on arrangement
+  const getTeams = () => {
+    if (playerArrangement.filter((p) => p !== null).length !== 4) {
+      return null;
+    }
+
+    const [bottom, left, top, right] = playerArrangement;
+    return {
+      team1: {
+        players: [bottom, top].filter((p) => p !== null),
+        name: "Team 1 (North-South)",
+      },
+      team2: {
+        players: [left, right].filter((p) => p !== null),
+        name: "Team 2 (East-West)",
+      },
+    };
+  };
+
+  // Handle player slot assignment
+  const handleSlotClick = (slotIndex) => {
+    console.log("🎯 handleSlotClick called:", {
+      slotIndex,
+      showTeamArrangement,
+    });
+    if (!showTeamArrangement) return;
+
+    // Find unassigned players
+    const unassignedPlayers = playersList.filter(
+      (player) => !playerArrangement.includes(player.id)
+    );
+
+    console.log("🎯 Slot click debug:", {
+      slotIndex,
+      playersList: playersList.map((p) => ({ id: p.id, name: p.name })),
+      currentArrangement: playerArrangement,
+      unassignedPlayers: unassignedPlayers.map((p) => ({
+        id: p.id,
+        name: p.name,
+      })),
+    });
+
+    if (unassignedPlayers.length > 0) {
+      // Assign first unassigned player to this slot
+      const newArrangement = [...playerArrangement];
+      newArrangement[slotIndex] = unassignedPlayers[0].id;
+      console.log("🎯 Assigning player to slot:", {
+        slotIndex,
+        playerId: unassignedPlayers[0].id,
+        newArrangement,
+      });
+      setPlayerArrangement(newArrangement);
+    } else if (playerArrangement[slotIndex] !== null) {
+      // Remove player from this slot
+      const newArrangement = [...playerArrangement];
+      newArrangement[slotIndex] = null;
+      console.log("🎯 Removing player from slot:", {
+        slotIndex,
+        newArrangement,
+      });
+      setPlayerArrangement(newArrangement);
+    }
+  };
+
+  // Reset arrangement
+  const resetArrangement = () => {
+    setPlayerArrangement([null, null, null, null]);
+  };
+
+  // Auto-arrange players in order they joined
+  const autoArrange = () => {
+    // Shuffle the playersList array
+    const shuffledPlayers = playersList.sort(() => Math.random() - 0.5);
+    const newArrangement = [null, null, null, null];
+
+    // Assign players to the arrangement
+    shuffledPlayers.forEach((player, index) => {
+      if (index < 4) {
+        newArrangement[index] = player.id;
+      }
+    });
+
+    setPlayerArrangement(newArrangement);
   };
 
   useEffect(() => {
@@ -77,24 +179,24 @@ function WaitingRoom() {
   return (
     <div className="min-h-screen min-w-screen bg-gradient-to-br from-green-400 to-blue-500 flex items-center">
       <main className="px-4 py-2 flex flex-col w-full items-center justify-center">
-        <div className="text-3xl text-white mb-3">Court Piece</div>
         {/* Room Status */}
         <div className="bg-white rounded-3xl shadow-xl px-8 py-4 w-full max-w-md mb-8">
-          <div className="text-center flex justify-between mb-2">
+          <div className="my-4 px-2 w-full text-center text-lg font-bold">
+            🎴 Court Piece 🎴
+          </div>
+          <div className="flex justify-between text-center mb-6 relative">
             {/* Logout Button */}
 
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              🎴 Main Room
-            </h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Main Room</h2>
             <div
               onClick={handleLogout}
-              className="flex gap-2 cursor-pointer top-0 text-gray-500 hover:text-red-500 transition-colors duration-200"
+              className=" flex gap-2 items-center text-gray-500 hover:text-red-500 transition-colors duration-200 cursor-pointer"
               aria-label="Logout"
             >
               Logout
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-4 w-4"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -183,10 +285,10 @@ function WaitingRoom() {
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 {playersList.map((player) => (
-                  <button
+                  <div
                     key={player.id}
                     onClick={() => setSelectedTrumpChooser(player.id)}
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 text-sm ${
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 text-sm cursor-pointer text-center ${
                       selectedTrumpChooser === player.id
                         ? "border-blue-500 bg-blue-50 text-blue-700"
                         : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
@@ -203,13 +305,181 @@ function WaitingRoom() {
                         {player.id === currentPlayer?.id && " (You)"}
                       </span>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
               {!selectedTrumpChooser && (
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   If no one is selected, it will rotate automatically
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* Team Arrangement Section */}
+          {playersCount >= 2 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Team Arrangement
+                </h3>
+                <div
+                  onClick={() => setShowTeamArrangement(!showTeamArrangement)}
+                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                >
+                  {showTeamArrangement ? "Hide" : "Show"}
+                </div>
+              </div>
+
+              {showTeamArrangement && (
+                <div className="space-y-3">
+                  {/* Table Layout */}
+                  <div className="relative bg-green-100 rounded-lg p-4 pt-2 min-h-[240px]">
+                    <div className="text-xs text-gray-500 text-center">
+                      Arrange players
+                    </div>
+
+                    {/* Top player */}
+                    <div
+                      className="absolute top-8 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors"
+                      onClick={() => handleSlotClick(2)}
+                    >
+                      {playerArrangement[2] ? (
+                        <div className="text-center">
+                          <img
+                            src={
+                              players[playerArrangement[2]]?.avatar ||
+                              "/default-avatar.png"
+                            }
+                            alt="Top player"
+                            className="w-8 h-8 rounded-full mx-auto mb-1"
+                          />
+                          <div className="text-xs text-gray-600">
+                            {players[playerArrangement[2]]?.name?.split(" ")[0]}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">Top</div>
+                      )}
+                    </div>
+
+                    {/* Left player */}
+                    <div
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 w-16 h-16 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors"
+                      onClick={() => handleSlotClick(1)}
+                    >
+                      {playerArrangement[1] ? (
+                        <div className="text-center">
+                          <img
+                            src={
+                              players[playerArrangement[1]]?.avatar ||
+                              "/default-avatar.png"
+                            }
+                            alt="Left player"
+                            className="w-8 h-8 rounded-full mx-auto mb-1"
+                          />
+                          <div className="text-xs text-gray-600">
+                            {players[playerArrangement[1]]?.name?.split(" ")[0]}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">Left</div>
+                      )}
+                    </div>
+
+                    {/* Right player */}
+                    <div
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 w-16 h-16 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors"
+                      onClick={() => handleSlotClick(3)}
+                    >
+                      {playerArrangement[3] ? (
+                        <div className="text-center">
+                          <img
+                            src={
+                              players[playerArrangement[3]]?.avatar ||
+                              "/default-avatar.png"
+                            }
+                            alt="Right player"
+                            className="w-8 h-8 rounded-full mx-auto mb-1"
+                          />
+                          <div className="text-xs text-gray-600">
+                            {players[playerArrangement[3]]?.name?.split(" ")[0]}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">Right</div>
+                      )}
+                    </div>
+
+                    {/* Bottom player */}
+                    <div
+                      className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors"
+                      onClick={() => handleSlotClick(0)}
+                    >
+                      {playerArrangement[0] ? (
+                        <div className="text-center">
+                          <img
+                            src={
+                              players[playerArrangement[0]]?.avatar ||
+                              "/default-avatar.png"
+                            }
+                            alt="Bottom player"
+                            className="w-8 h-8 rounded-full mx-auto mb-1"
+                          />
+                          <div className="text-xs text-gray-600">
+                            {players[playerArrangement[0]]?.name?.split(" ")[0]}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">Bottom</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Arrangement Controls */}
+                  <div className="flex gap-2">
+                    <div
+                      onClick={autoArrange}
+                      className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-medium py-2 px-3 rounded-lg transition-colors cursor-pointer text-center"
+                    >
+                      Auto Arrange
+                    </div>
+                    <div
+                      onClick={resetArrangement}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium py-2 px-3 rounded-lg transition-colors cursor-pointer text-center"
+                    >
+                      Reset
+                    </div>
+                  </div>
+
+                  {/* Team Display */}
+                  {(() => {
+                    const teams = getTeams();
+                    return teams ? (
+                      <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                        <div className="font-medium mb-1">Teams:</div>
+                        <div className="space-y-1">
+                          <div>
+                            <span className="font-medium text-blue-600">
+                              {teams.team1.name}:
+                            </span>{" "}
+                            {teams.team1.players
+                              .map((id) => players[id]?.name?.split(" ")[0])
+                              .join(" & ")}
+                          </div>
+                          <div>
+                            <span className="font-medium text-red-600">
+                              {teams.team2.name}:
+                            </span>{" "}
+                            {teams.team2.players
+                              .map((id) => players[id]?.name?.split(" ")[0])
+                              .join(" & ")}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
               )}
             </div>
           )}
@@ -241,10 +511,15 @@ function WaitingRoom() {
             </div>
           )}
 
-          {playersCount === 4 && !allReady && (
-            <div className="text-center p-4 bg-yellow-50 rounded-xl">
-              <p className="text-yellow-700 font-medium">
-                Waiting for all players to be ready...
+          {/* Waiting Message */}
+          {!canStart && playersCount < 4 && (
+            <div className="text-center p-4 bg-blue-50 rounded-xl">
+              <p className="text-blue-700 font-medium">
+                Waiting for {4 - playersCount} more player
+                {4 - playersCount !== 1 ? "s" : ""}...
+              </p>
+              <p className="text-blue-600 text-sm mt-1">
+                Share this room with your friends!
               </p>
             </div>
           )}

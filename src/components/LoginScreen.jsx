@@ -1,5 +1,6 @@
 import { useAppDispatch, useAuth } from "../store/hooks";
 import { loginWithGoogle, clearError } from "../store/slices/authSlice";
+import { bgStyle } from "../utils/background";
 
 function LoginScreen() {
   const dispatch = useAppDispatch();
@@ -11,7 +12,10 @@ function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen min-w-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+    <div
+      style={bgStyle}
+      className="min-h-screen min-w-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4"
+    >
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md min-w-[280px]">
         {/* Game Logo/Title */}
         <div className="flex flex-col items-center mb-8">
@@ -20,7 +24,7 @@ function LoginScreen() {
             className="text-3xl font-bold text-red-800 mb-2"
             style={{ color: "#991b1b" }}
           >
-            Judgement
+            Court Piece
           </h1>
           <p className="text-gray-600">Multiplayer Card Game</p>
         </div>

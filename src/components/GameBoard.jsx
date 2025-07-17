@@ -20,8 +20,16 @@ function GameBoard() {
   const { user } = useAuth();
   const currentPlayer = useCurrentPlayer();
   const players = usePlayers();
-  const { currentHand, currentTurn, leadSuit, trumpSuit, handNumber, gameId } =
-    useGame();
+  const {
+    currentHand,
+    currentTurn,
+    leadSuit,
+    trumpSuit,
+    handNumber,
+    gameId,
+    playerArrangement,
+    teams,
+  } = useGame();
   const selectedCard = useSelectedCard();
   const isMyTurn = useIsMyTurn();
   const [showEndGameConfirm, setShowEndGameConfirm] = useState(false);
@@ -29,7 +37,25 @@ function GameBoard() {
   // ===== COMPUTED VALUES =====
   // Use consistent sorted ordering to match the turn logic in completeHand
   const playerIds = Object.keys(players).sort(); // Alphabetical sort for consistency
-  const playersList = playerIds.map((id) => players[id]).filter(Boolean); // Convert IDs to player objects
+
+  // Create playersList respecting team arrangement if available
+  let playersList;
+  if (
+    playerArrangement &&
+    playerArrangement.filter((p) => p !== null).length === 4
+  ) {
+    // Use the team arrangement order: [bottom, left, top, right]
+    playersList = playerArrangement.map((id) => players[id]).filter(Boolean);
+    console.log(
+      "🎯 Using team arrangement for player positioning:",
+      playerArrangement
+    );
+  } else {
+    // Fall back to default alphabetical order
+    playersList = playerIds.map((id) => players[id]).filter(Boolean);
+    console.log("🎯 Using default alphabetical order for player positioning");
+  }
+
   const rawPlayerCards = currentPlayer?.id
     ? players[currentPlayer.id]?.cards || []
     : [];
@@ -62,6 +88,8 @@ function GameBoard() {
   });
   console.log("Current Player Cards Count:", currentPlayerCards.length);
   console.log("Current Player Cards:", currentPlayerCards);
+  console.log("Player Arrangement:", playerArrangement);
+  console.log("Teams:", teams);
   console.log("========================");
 
   // ===== EFFECTS =====
@@ -81,12 +109,12 @@ function GameBoard() {
           <p className="text-gray-600 text-sm mb-4">
             Unable to load your player data. Please try refreshing the page.
           </p>
-          <button
+          <div
             onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 cursor-pointer text-center"
           >
             🔄 Refresh
-          </button>
+          </div>
         </div>
       </div>
     );
@@ -145,21 +173,60 @@ function GameBoard() {
   const handleEndGame = () => setShowEndGameConfirm(true);
   const confirmEndGame = () => {
     dispatch(endGame({ gameId }));
-    window.reload();
     setShowEndGameConfirm(false);
   };
   const cancelEndGame = () => setShowEndGameConfirm(false);
 
+  // ===== TEAM SCORE UTILITIES =====
+  const getTeamScores = () => {
+    if (!teams || !teams.team1 || !teams.team2) return null;
+
+    const team1Score = teams.team1.players.reduce((total, playerId) => {
+      return total + (players[playerId]?.handsWon || 0);
+    }, 0);
+
+    const team2Score = teams.team2.players.reduce((total, playerId) => {
+      return total + (players[playerId]?.handsWon || 0);
+    }, 0);
+
+    return {
+      team1: {
+        name: teams.team1.name,
+        score: team1Score,
+        players: teams.team1.players.map((id) => players[id]).filter(Boolean),
+      },
+      team2: {
+        name: teams.team2.name,
+        score: team2Score,
+        players: teams.team2.players.map((id) => players[id]).filter(Boolean),
+      },
+    };
+  };
+
   // ===== UTILITY FUNCTIONS =====
   const getPlayerTableIndex = (playerId) => {
-    // Find the player's index in the playersList
+    // Find the player's index in the playersList (which now respects team arrangement)
     return playersList.findIndex((player) => player.id === playerId);
   };
 
   const getCardPosition = (playerId) => {
     // Find the current player's index and the card player's index
-    const currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
-    const cardPlayerIndex = getPlayerTableIndex(playerId);
+    let currentPlayerIndex, cardPlayerIndex;
+
+    if (
+      playerArrangement &&
+      playerArrangement.filter((p) => p !== null).length === 4
+    ) {
+      // When using team arrangement, find positions in the arrangement
+      currentPlayerIndex = playerArrangement.findIndex(
+        (id) => id === currentPlayer?.id
+      );
+      cardPlayerIndex = playerArrangement.findIndex((id) => id === playerId);
+    } else {
+      // Fall back to default logic
+      currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
+      cardPlayerIndex = getPlayerTableIndex(playerId);
+    }
 
     // Calculate relative position from current player's perspective
     // Current player is always at bottom (position 0)
@@ -188,11 +255,75 @@ function GameBoard() {
 
   // ===== SUB-COMPONENTS =====
 
+  // Component: Team Score Display (shows team scores when teams are active)
+  const TeamScoreDisplay = () => {
+    const teamScores = getTeamScores();
+
+    if (!teamScores) return null;
+
+    return (
+      <div className="fixed top-20 right-4 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 z-10">
+        <div className="text-xs font-bold text-gray-700 mb-2 text-center">
+          Team Scores
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-xs font-medium text-blue-600">
+                North-South
+              </span>
+            </div>
+            <span className="text-sm font-bold text-gray-800">
+              {teamScores.team1.score}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              <span className="text-xs font-medium text-red-600">
+                East-West
+              </span>
+            </div>
+            <span className="text-sm font-bold text-gray-800">
+              {teamScores.team2.score}
+            </span>
+          </div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <div className="text-xs text-gray-500 text-center">
+            Team{" "}
+            {teamScores.team1.score > teamScores.team2.score
+              ? "North-South"
+              : teamScores.team2.score > teamScores.team1.score
+              ? "East-West"
+              : "Tied"}
+            {teamScores.team1.score !== teamScores.team2.score && " Leading"}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Component: Player Info Area (displays other players around the table)
   const PlayerInfoArea = ({ player, index }) => {
     // Calculate relative position from current player's perspective
-    const currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
-    const playerIndex = getPlayerTableIndex(player.id);
+    let currentPlayerIndex, playerIndex;
+
+    if (
+      playerArrangement &&
+      playerArrangement.filter((p) => p !== null).length === 4
+    ) {
+      // When using team arrangement, find positions in the arrangement
+      currentPlayerIndex = playerArrangement.findIndex(
+        (id) => id === currentPlayer?.id
+      );
+      playerIndex = playerArrangement.findIndex((id) => id === player.id);
+    } else {
+      // Fall back to default logic
+      currentPlayerIndex = getPlayerTableIndex(currentPlayer.id);
+      playerIndex = getPlayerTableIndex(player.id);
+    }
 
     // Calculate relative position (1, 2, 3 for left, top, right)
     const relativePosition = (playerIndex - currentPlayerIndex + 4) % 4;
@@ -255,7 +386,7 @@ function GameBoard() {
   const GameHeader = () => (
     <header className="pt-safe-top px-4 py-2 bg-green-900/90 backdrop-blur-sm text-white relative z-10">
       <div className="flex justify-between items-center">
-        <span className="text-lg font-bold">Round {handNumber + 1}/13</span>
+        <span className="text-lg font-bold">Hand {handNumber + 1}/13</span>
         <div
           onClick={handleEndGame}
           className="ml-4 !bg-red-600 hover:!bg-red-700 active:bg-red-800 text-white text-xs font-medium px-3 py-1 rounded-lg transition-all duration-200"
@@ -276,6 +407,13 @@ function GameBoard() {
             <span className={`text-lg font-bold ${SUIT_COLORS[trumpSuit]}`}>
               {SUIT_SYMBOLS[trumpSuit]}
             </span>
+          </div>
+        )}
+
+        {teams && (
+          <div className="flex items-center space-x-2 text-white px-3 rounded-full">
+            <span className="text-xs">Teams Active</span>
+            <span className="text-xs">🤝</span>
           </div>
         )}
       </div>
@@ -354,12 +492,12 @@ function GameBoard() {
               <p className="text-xs mt-2 opacity-60">
                 Hand {handNumber + 1}/13 • Cards: {currentPlayerCards.length}
               </p>
-              <button
+              <div
                 onClick={() => window.location.reload()}
-                className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 cursor-pointer text-center"
               >
                 🔄 Refresh Game
-              </button>
+              </div>
             </div>
           </div>
         );
@@ -485,7 +623,7 @@ function GameBoard() {
                   const isSelected =
                     selectedCard?.suit === card.suit &&
                     selectedCard?.value === card.value;
-
+ 
                   return (
                     <span
                       key={`info-${card.suit}-${card.value}-${index}`}
@@ -556,13 +694,13 @@ function GameBoard() {
           <div className="flex space-x-3">
             <div
               onClick={cancelEndGame}
-              className="flex-1 text-center btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-4 rounded-xl transition-all duration-200"
+              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer text-center"
             >
               Cancel
             </div>
             <div
               onClick={confirmEndGame}
-              className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer text-center"
             >
               End Game
             </div>
@@ -601,6 +739,7 @@ function GameBoard() {
       </main>
 
       <PlayerHandArea />
+      <TeamScoreDisplay />
       <EndGameDialog />
     </div>
   );

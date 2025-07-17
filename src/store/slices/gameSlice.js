@@ -112,7 +112,7 @@ export const updatePlayerReady = createAsyncThunk(
 export const startGame = createAsyncThunk(
   "game/startGame",
   async (
-    { gameId, players, manualTrumpSelector },
+    { gameId, players, manualTrumpSelector, playerArrangement, teams },
     { rejectWithValue, getState }
   ) => {
     try {
@@ -169,6 +169,8 @@ export const startGame = createAsyncThunk(
         handNumber: 0,
         gameCount: currentGameCount + 1, // Increment game count
         scores: playerIds.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
+        playerArrangement: playerArrangement || null,
+        teams: teams || null,
       };
 
       await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
@@ -178,6 +180,9 @@ export const startGame = createAsyncThunk(
           name: p.name,
           cards: p.cards?.length || 0,
         })),
+        playerArrangement: gameUpdate.playerArrangement,
+        teams: gameUpdate.teams,
+        trumpSelector: gameUpdate.trumpSelector,
       });
       return gameUpdate;
     } catch (error) {
@@ -386,6 +391,8 @@ export const endGame = createAsyncThunk(
         winner: null,
         deck: [],
         gameCount: currentGameCount, // Preserve game count for trump selector rotation
+        playerArrangement: null,
+        teams: null,
       };
 
       await update(ref(realtimeDb, `games/${gameId}`), gameUpdate);
@@ -411,6 +418,8 @@ const initialState = {
   scores: {},
   winner: null,
   gameCount: 0, // Track number of games played for trump selector rotation
+  playerArrangement: null, // [bottom, left, top, right] player positions
+  teams: null, // Team information
   isConnected: false,
   loading: false,
   error: null,
@@ -474,6 +483,8 @@ const gameSlice = createSlice({
         state.winner = data.winner || null;
         state.gameCount = data.gameCount || 0;
         state.deck = data.deck || [];
+        state.playerArrangement = data.playerArrangement || null;
+        state.teams = data.teams || null;
         state.isConnected = true;
         state.error = null;
       } else {
