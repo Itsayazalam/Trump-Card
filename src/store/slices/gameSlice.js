@@ -111,7 +111,10 @@ export const updatePlayerReady = createAsyncThunk(
 
 export const startGame = createAsyncThunk(
   "game/startGame",
-  async ({ gameId, players }, { rejectWithValue, getState }) => {
+  async (
+    { gameId, players, manualTrumpSelector },
+    { rejectWithValue, getState }
+  ) => {
     try {
       if (Object.keys(players).length !== 4) {
         throw new Error("Need exactly 4 players to start");
@@ -140,15 +143,22 @@ export const startGame = createAsyncThunk(
       // Store remaining deck for later dealing
       const remainingDeck = shuffledDeck.slice(20);
 
-      // Choose trump selector - rotate based on game count for fair rotation
-      const selectorIndex = currentGameCount % playerIds.length;
-      const trumpSelector = playerIds[selectorIndex];
-
-      console.log(
-        `🎯 Trump selector chosen: ${players[trumpSelector]?.name} (game ${
-          currentGameCount + 1
-        }, index ${selectorIndex})`
-      );
+      // Choose trump selector - use manual selection if provided, otherwise rotate based on game count
+      let trumpSelector;
+      if (manualTrumpSelector && playerIds.includes(manualTrumpSelector)) {
+        trumpSelector = manualTrumpSelector;
+        console.log(
+          `🎯 Trump selector manually chosen: ${players[trumpSelector]?.name}`
+        );
+      } else {
+        const selectorIndex = currentGameCount % playerIds.length;
+        trumpSelector = playerIds[selectorIndex];
+        console.log(
+          `🎯 Trump selector auto-chosen: ${
+            players[trumpSelector]?.name
+          } (game ${currentGameCount + 1}, index ${selectorIndex})`
+        );
+      }
 
       const gameUpdate = {
         players: updatedPlayers,

@@ -6,8 +6,7 @@ import {
   useGame,
 } from "../store/hooks";
 import { updatePlayerReady, startGame } from "../store/slices/gameSlice";
-import { realtimeDb } from "../firebase";
-import { ref, remove } from "firebase/database";
+import { logout } from "../store/slices/authSlice";
 
 function WaitingRoom() {
   const dispatch = useAppDispatch();
@@ -15,11 +14,24 @@ function WaitingRoom() {
   const players = usePlayers();
   const { gameId } = useGame();
   const [isReady, setIsReady] = useState(false);
+  const [selectedTrumpChooser, setSelectedTrumpChooser] = useState(null);
+
+  // Detailed console logging
+  console.log("=== WAITING ROOM DEBUG ===");
+  console.log("Current Player:", currentPlayer);
+  console.log("Players Object:", players);
+  console.log("Game ID:", gameId);
 
   const playersList = Object.values(players);
   const playersCount = playersList.length;
   const allReady = playersList.every((p) => p.isReady);
   const canStart = playersCount === 4 && allReady;
+
+  console.log("Players List:", playersList);
+  console.log("Players Count:", playersCount);
+  console.log("All Ready:", allReady);
+  console.log("Can Start:", canStart);
+  console.log("========================");
 
   const handleReadyToggle = async () => {
     const newReadyState = !isReady;
@@ -35,27 +47,18 @@ function WaitingRoom() {
 
   const handleStartGame = async () => {
     if (canStart) {
-      dispatch(startGame({ gameId, players }));
+      dispatch(
+        startGame({
+          gameId,
+          players,
+          manualTrumpSelector: selectedTrumpChooser,
+        })
+      );
     }
   };
 
-  const handleNewGame = async () => {
-    try {
-      console.log("🗑️ Clearing Firebase database for new game...");
-
-      // Clear the entire game data from Firebase
-      const gameRef = ref(realtimeDb, `games/${gameId || "main-room"}`);
-      await remove(gameRef);
-
-      console.log("✅ Firebase database cleared successfully");
-
-      // Refresh the page to start fresh
-      window.location.reload();
-    } catch (error) {
-      console.error("❌ Error clearing Firebase database:", error);
-      // If Firebase clearing fails, still refresh to start over
-      window.location.reload();
-    }
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   useEffect(() => {
@@ -64,16 +67,46 @@ function WaitingRoom() {
     }
   }, [players, currentPlayer]);
 
+  useEffect(() => {
+    // Reset trump chooser selection if the selected player is no longer in the game
+    if (selectedTrumpChooser && !players[selectedTrumpChooser]) {
+      setSelectedTrumpChooser(null);
+    }
+  }, [players, selectedTrumpChooser]);
+
   return (
     <div className="min-h-screen min-w-screen bg-gradient-to-br from-green-400 to-blue-500 flex items-center">
       <main className="px-4 py-2 flex flex-col w-full items-center justify-center">
+        <div className="text-3xl text-white mb-3">Court Piece</div>
         {/* Room Status */}
         <div className="bg-white rounded-3xl shadow-xl px-8 py-4 w-full max-w-md mb-8">
-          <div className="text-center mb-6">
+          <div className="text-center flex justify-between mb-2">
+            {/* Logout Button */}
+
             <h2 className="text-xl font-bold text-gray-800 mb-2">
               🎴 Main Room
             </h2>
-            <p className="text-gray-600">{playersCount}/4 players joined</p>
+            <div
+              onClick={handleLogout}
+              className="flex gap-2 cursor-pointer top-0 text-gray-500 hover:text-red-500 transition-colors duration-200"
+              aria-label="Logout"
+            >
+              Logout
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+            </div>
           </div>
           {/* Players List */}
           <div className="space-y-3 mb-6">
@@ -141,6 +174,45 @@ function WaitingRoom() {
                   }/${playersCount} players ready`}
             </div>
           )}
+
+          {/* Trump Chooser Selection */}
+          {playersCount >= 2 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-2 text-center">
+                Who chooses trump?
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {playersList.map((player) => (
+                  <button
+                    key={player.id}
+                    onClick={() => setSelectedTrumpChooser(player.id)}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 text-sm ${
+                      selectedTrumpChooser === player.id
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={player.avatar || "/default-avatar.png"}
+                        alt={player.name}
+                        className="w-4 h-4 rounded-full"
+                      />
+                      <span className="truncate">
+                        {player.name.split(" ")[0]}
+                        {player.id === currentPlayer?.id && " (You)"}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {!selectedTrumpChooser && (
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  If no one is selected, it will rotate automatically
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -169,19 +241,6 @@ function WaitingRoom() {
             </div>
           )}
 
-          {/* Waiting Message */}
-          {!canStart && playersCount < 4 && (
-            <div className="text-center p-4 bg-blue-50 rounded-xl">
-              <p className="text-blue-700 font-medium">
-                Waiting for {4 - playersCount} more player
-                {4 - playersCount !== 1 ? "s" : ""}...
-              </p>
-              <p className="text-blue-600 text-sm mt-1">
-                Share this room with your friends!
-              </p>
-            </div>
-          )}
-
           {playersCount === 4 && !allReady && (
             <div className="text-center p-4 bg-yellow-50 rounded-xl">
               <p className="text-yellow-700 font-medium">
@@ -189,13 +248,6 @@ function WaitingRoom() {
               </p>
             </div>
           )}
-
-          <div
-            onClick={handleNewGame}
-            className="w-full text-center text-sm text-white bg-red-400 hover:bg-red-600 active:bg-red-700 font-semibold py-2 px-2 rounded-xl transition-all duration-200"
-          >
-            🔄 Reset
-          </div>
         </div>
       </main>
     </div>

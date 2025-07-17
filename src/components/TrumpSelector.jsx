@@ -95,11 +95,11 @@ function TrumpSelector() {
             {/* Suit Options */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               {SUITS.map((suit) => (
-                <button
+                <div
                   key={suit}
                   onClick={() => handleSuitSelect(suit)}
                   className={`
-                    p-6 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2
+                    p-6 text-center rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2
                     ${
                       selectedSuit === suit
                         ? "border-blue-500 bg-blue-50 scale-105"
@@ -121,16 +121,16 @@ function TrumpSelector() {
                   <span className="capitalize font-medium text-gray-700">
                     {suit}
                   </span>
-                </button>
+                </div>
               ))}
             </div>
 
             {/* Confirm Button */}
-            <button
+            <div
               onClick={handleConfirmTrump}
               disabled={!selectedSuit}
               className={`
-                w-full py-4 px-6 !text-black rounded-xl font-semibold text-lg transition-all duration-200
+                w-full py-4 text-center px-6 !text-black rounded-xl font-semibold text-lg transition-all duration-200
                 ${
                   selectedSuit
                     ? "bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white"
@@ -143,7 +143,7 @@ function TrumpSelector() {
                     selectedSuit.charAt(0).toUpperCase() + selectedSuit.slice(1)
                   } as Trump`
                 : "Select a suit first"}
-            </button>
+            </div>
           </div>
         ) : (
           <div className="">

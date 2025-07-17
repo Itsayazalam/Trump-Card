@@ -145,6 +145,7 @@ function GameBoard() {
   const handleEndGame = () => setShowEndGameConfirm(true);
   const confirmEndGame = () => {
     dispatch(endGame({ gameId }));
+    window.reload();
     setShowEndGameConfirm(false);
   };
   const cancelEndGame = () => setShowEndGameConfirm(false);
@@ -254,7 +255,7 @@ function GameBoard() {
   const GameHeader = () => (
     <header className="pt-safe-top px-4 py-2 bg-green-900/90 backdrop-blur-sm text-white relative z-10">
       <div className="flex justify-between items-center">
-        <span className="text-lg font-bold">Hand {handNumber}/13</span>
+        <span className="text-lg font-bold">Round {handNumber + 1}/13</span>
         <div
           onClick={handleEndGame}
           className="ml-4 !bg-red-600 hover:!bg-red-700 active:bg-red-800 text-white text-xs font-medium px-3 py-1 rounded-lg transition-all duration-200"
@@ -559,12 +560,12 @@ function GameBoard() {
             >
               Cancel
             </div>
-            <button
+            <div
               onClick={confirmEndGame}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200"
+              className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200"
             >
               End Game
-            </button>
+            </div>
           </div>
         </div>
       </div>
