@@ -1,6 +1,7 @@
 import { usePlayers, useGame } from "../store/hooks";
 import { realtimeDb } from "../firebase";
 import { ref, remove } from "firebase/database";
+import { bgStyle } from "../utils/background";
 
 function GameComplete() {
   const players = usePlayers();
@@ -73,7 +74,10 @@ function GameComplete() {
   };
 
   return (
-    <div className="min-h-screen min-w-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col">
+    <div
+      style={bgStyle}
+      className="min-h-screen min-w-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col"
+    >
       {/* Main Content */}
       <main className="px-4 py-36 flex flex-col w-full space-y-8 justify-between">
         {/* Final Leaderboard */}

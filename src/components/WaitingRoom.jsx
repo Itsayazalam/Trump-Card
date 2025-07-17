@@ -7,6 +7,7 @@ import {
 } from "../store/hooks";
 import { updatePlayerReady, startGame } from "../store/slices/gameSlice";
 import { logout } from "../store/slices/authSlice";
+import { bgStyle } from "../utils/background";
 
 function WaitingRoom() {
   const dispatch = useAppDispatch();
@@ -177,7 +178,10 @@ function WaitingRoom() {
   }, [players, selectedTrumpChooser]);
 
   return (
-    <div className="min-h-screen min-w-screen bg-gradient-to-br from-green-400 to-blue-500 flex items-center">
+    <div
+      style={bgStyle}
+      className="min-h-screen min-w-screen bg-gradient-to-br from-green-400 to-blue-500 flex items-center"
+    >
       <main className="px-4 py-2 flex flex-col w-full items-center justify-center">
         {/* Room Status */}
         <div className="bg-white rounded-3xl shadow-xl px-8 py-4 w-full max-w-md mb-8">
@@ -288,9 +292,9 @@ function WaitingRoom() {
                   <div
                     key={player.id}
                     onClick={() => setSelectedTrumpChooser(player.id)}
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 text-sm cursor-pointer text-center ${
+                    className={`p-2 bg-white rounded-lg border-2 transition-all duration-200 text-sm cursor-pointer text-center ${
                       selectedTrumpChooser === player.id
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        ? "border-green-500 bg-green-50 text-blue-700"
                         : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
                     }`}
                   >

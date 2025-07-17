@@ -8,6 +8,7 @@ import {
 import { selectTrump } from "../store/slices/gameSlice";
 import { SUITS, SUIT_SYMBOLS, SUIT_COLORS } from "../utils/gameConstants";
 import Card from "./Card";
+import { bgStyle } from "../utils/background";
 
 function TrumpSelector() {
   const dispatch = useAppDispatch();
@@ -40,7 +41,10 @@ function TrumpSelector() {
   };
 
   return (
-    <div className="min-h-screen min-w-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col">
+    <div
+      style={bgStyle}
+      className="min-h-screen min-w-screen bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col"
+    >
       {/* Main Content */}
       <main className="flex-1 px-4 py-8 flex flex-col items-center justify-center space-y-8">
         {/* Selector Info */}
@@ -133,7 +137,7 @@ function TrumpSelector() {
                 w-full py-4 text-center px-6 !text-black rounded-xl font-semibold text-lg transition-all duration-200
                 ${
                   selectedSuit
-                    ? "bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white"
+                    ? "bg-green-500 hover:bg-green-600 active:bg-green-700 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }
               `}
