@@ -42,10 +42,10 @@ function LoginScreen() {
             </div>
           )}
 
-          <button
+          <div
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full border-2 rounded-xl py-4 px-6 flex items-center justify-center transition-all duration-200 disabled:opacity-50 min-h-[60px]"
+            className="btn cursor-pointer text-center w-full border-2 rounded-xl py-4 px-6 flex items-center justify-center transition-all duration-200 disabled:opacity-50 min-h-[60px]"
             style={{
               backgroundColor: "#7f1d1d",
               borderColor: "#7f1d1d",
@@ -84,7 +84,7 @@ function LoginScreen() {
                 </span>
               </div>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Game Info */}
